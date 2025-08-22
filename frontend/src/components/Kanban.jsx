@@ -24,7 +24,40 @@ const COLUMNS = [
   { key: "entregado", title: "Entregado" },
 ];
 
+const STATUS_STYLES = {
+  recibido:         "bg-slate-100 text-slate-700 ring-slate-200",
+  en_progreso:      "bg-sky-100 text-sky-800 ring-sky-200",
+  en_espera_cliente:"bg-amber-100 text-amber-800 ring-amber-200",
+  aprobado:         "bg-indigo-100 text-indigo-800 ring-indigo-200",
+  listo:            "bg-emerald-100 text-emerald-800 ring-emerald-200",
+  entregado:        "bg-green-100 text-green-800 ring-green-200",
+  cancelado:        "bg-rose-100 text-rose-800 ring-rose-200",
+};
+
+const STATUS_LABEL = {
+  recibido: "Recibido",
+  en_progreso: "En progreso",
+  en_espera_cliente: "En espera cliente",
+  aprobado: "Aprobado",
+  listo: "Listo",
+  entregado: "Entregado",
+  cancelado: "Cancelado",
+};
+
+const isOverdue = (iso) => iso && new Date(iso) < new Date();
+const isSoon = (iso) => {
+  if (!iso) return false;
+  const ms = new Date(iso).getTime() - Date.now();
+  return ms > 0 && ms <= 48 * 60 * 60 * 1000; // 48h
+};
+
 function KanbanCard({ order, listeners, attributes, setNodeRef, style }) {
+  const dueClass = isOverdue(order.due_date)
+    ? "bg-rose-100 text-rose-800 ring-rose-200"
+    : isSoon(order.due_date)
+    ? "bg-amber-100 text-amber-800 ring-amber-200"
+    : "bg-slate-100 text-slate-700 ring-slate-200";
+
   return (
     <article
       ref={setNodeRef}
@@ -39,15 +72,27 @@ function KanbanCard({ order, listeners, attributes, setNodeRef, style }) {
       <div className="mt-0.5 text-xs text-slate-500">
         {order.client_name} · {order.delivery_method}
       </div>
-      {order.due_date && (
-        <div className="mt-1 text-xs">📅 Vence: {order.due_date}</div>
-      )}
+
+      {/* Chips */}
+      <div className="mt-2 flex flex-wrap items-center gap-2">
+        <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs ring-1 ${STATUS_STYLES[order.status] || "bg-slate-100 text-slate-700 ring-slate-200"}`}>
+          {STATUS_LABEL[order.status] || order.status}
+        </span>
+
+        {order.due_date && (
+          <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs ring-1 ${dueClass}`}>
+            📅 Vence: {order.due_date}
+          </span>
+        )}
+      </div>
+
       {order.description && (
         <p className="mt-2 line-clamp-2 text-sm text-slate-600">{order.description}</p>
       )}
     </article>
   );
 }
+
 
 function SortableCard({ order, id }) {
   const { attributes, listeners, setNodeRef, transform, transition } =
@@ -78,17 +123,14 @@ function DroppableColumn({ id, children }) {
 }
 
 export default function Kanban({ orders = [], onChangeStatus }) {
-  // Agrupa IDs (codes) por estado
-  const initialColumns = useMemo(() => {
+  // Agrupa IDs (codes) por estado, sin estado local
+  const columnsState = useMemo(() => {
     const grouped = Object.fromEntries(COLUMNS.map(c => [c.key, []]));
     for (const o of orders) {
       if (grouped[o.status]) grouped[o.status].push(o.code);
     }
     return grouped;
   }, [orders]);
-
-  const [columnsState, setColumnsState] = useState(initialColumns);
-  useEffect(() => setColumnsState(initialColumns), [initialColumns]);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
   const [activeId, setActiveId] = useState(null);
@@ -117,17 +159,7 @@ export default function Kanban({ orders = [], onChangeStatus }) {
 
     if (!from || !to || from === to) return;
 
-    setColumnsState(prev => {
-      const next = structuredClone(prev);
-      // saca del origen
-      next[from] = next[from].filter(id => id !== active.id);
-      // inserta en destino (si over es card, antes; si es columna, al final)
-      const overItems = next[to];
-      const overIndex = overItems.indexOf(overId);
-      const insertIndex = overIndex >= 0 ? overIndex : overItems.length;
-      overItems.splice(insertIndex, 0, active.id);
-      return next;
-    });
+  // No actualiza estado local, solo visual
   }
 
   function handleDragEnd(e) {
@@ -139,21 +171,11 @@ export default function Kanban({ orders = [], onChangeStatus }) {
     const to = findContainerOf(overId) || overId;
     if (!from || !to) return;
 
-    if (from === to) {
-      // reorden dentro de la misma columna
-      setColumnsState(prev => {
-        const next = structuredClone(prev);
-        const oldIndex = next[from].indexOf(active.id);
-        const newIndex = next[to].indexOf(overId);
-        next[to] = arrayMove(next[to], oldIndex, newIndex < 0 ? next[to].length - 1 : newIndex);
-        return next;
-      });
-      return;
+    if (from !== to) {
+      // movido a otra columna: avisa al backend
+      const moved = getOrderById(active.id);
+      if (moved && onChangeStatus) onChangeStatus(moved.code, to);
     }
-
-    // movido a otra columna: avisa al backend
-    const moved = getOrderById(active.id);
-    if (moved && onChangeStatus) onChangeStatus(moved.code, to);
   }
 
   return (

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Kanban from "./components/Kanban.jsx";
 import Layout from "./components/Layout.jsx";
 import NewOrderModal from "./components/NewOrderModal.jsx";
@@ -6,16 +6,28 @@ import { api } from "./lib/api.js";
 
 const STATUS_KEYS = ["recibido","en_progreso","listo","entregado"];
 
+const isOverdue = (iso) => iso && new Date(iso) < new Date();
+const isSoon = (iso) => {
+  if (!iso) return false;
+  const ms = new Date(iso).getTime() - Date.now();
+  return ms > 0 && ms <= 48 * 60 * 60 * 1000; // 48h
+};
 function getKpis(orders){
-  const counts = { total: orders.length, recibido:0, en_progreso:0, listo:0, entregado:0 };
-  for (const o of orders) if (counts[o.status] !== undefined) counts[o.status] += 1;
-  return counts;
+  const k = { total: orders.length, recibido:0, en_progreso:0, listo:0, entregado:0, overdue:0, soon:0 };
+  for (const o of orders) {
+    if (k[o.status] !== undefined) k[o.status] += 1;
+    if (isOverdue(o.due_date)) k.overdue += 1;
+    else if (isSoon(o.due_date)) k.soon += 1;
+  }
+  return k;
 }
-
 
 export default function App() {
   const [orders, setOrders] = useState([]);
   const [showNew, setShowNew] = useState(false);
+  const [query, setQuery] = useState("");
+
+  const kpis = useMemo(() => getKpis(orders), [orders]);
 
   async function fetchOrders() {
     const data = await api.listOrders();
@@ -23,14 +35,21 @@ export default function App() {
   }
 
   async function handleChangeStatus(code, status) {
-    setOrders(prev => prev.map(o => o.code === code ? { ...o, status } : o));
-    try { await api.updateStatus(code, status); }
-    catch (err) { console.error(err); await fetchOrders(); }
+  // 1) actualización optimista — esto hace re-render y recalcula KPIs
+  setOrders(prev => prev.map(o => o.code === code ? { ...o, status } : o));
+  
+
+  try {
+    // 2) confirmación con backend
+    await api.updateStatus(code, status);
+  } catch (err) {
+    console.error(err);
+    // 3) rollback si falla
+    await fetchOrders();
   }
+}
 
   useEffect(() => { fetchOrders(); }, []);
-
-  const [query, setQuery] = useState("");
 
 function normalize(s=""){ return s.toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu,""); }
 
@@ -75,28 +94,37 @@ const filtered = orders.filter(o => {
 
 
       {/* KPIs sobre pedidos */}
-      <section className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4">
-        {(() => {
-          const k = getKpis(orders);
-          const cards = [
-            { label: "Recibidos", value: k.recibido, icon: "📥" },
-            { label: "En Progreso", value: k.en_progreso, icon: "🛠️" },
-            { label: "Listos", value: k.listo, icon: "✅" },
-            { label: "Entregados", value: k.entregado, icon: "📦" },
-            // Si quieres un 5º KPI de Total, agrega:
-            // { label: "Total", value: k.total, icon: "Σ" },
-          ];
-          return cards.map((c, i) => (
-            <div key={i} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-              <div className="flex items-center justify-between">
-                <div className="text-2xl">{c.icon}</div>
-                <div className="text-2xl font-semibold">{c.value}</div>
-              </div>
-            <div className="mt-1 text-sm text-slate-600">{c.label}</div>
-            </div>
-            ));
-        })()}
-      </section>
+<section className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-5">
+  {(() => {
+    const k = kpis;
+    const cards = [
+      { label: "Recibidos",    value: k.recibido,    icon: "📥",  subtle: true },
+      { label: "En Progreso",  value: k.en_progreso, icon: "🛠️",  subtle: true },
+      { label: "Listos",       value: k.listo,       icon: "✅",  subtle: true },
+      { label: "Entregados",   value: k.entregado,   icon: "📦",  subtle: true },
+      { label: "Atrasados",    value: k.overdue,     icon: "⏰",  danger: k.overdue > 0, hint: k.soon > 0 ? `Pronto: ${k.soon}` : "" },
+    ];
+    return cards.map((c, i) => (
+      <div
+        key={i}
+        className={[
+          "rounded-2xl border bg-white p-4 shadow-sm",
+          c.danger ? "border-rose-300 ring-1 ring-rose-200" : "border-slate-200",
+        ].join(" ")}
+      >
+        <div className="flex items-center justify-between">
+          <div className="text-2xl">{c.icon}</div>
+          <div className={["text-2xl font-semibold", c.danger ? "text-rose-600" : "text-slate-800"].join(" ")}>
+            {c.value}
+          </div>
+        </div>
+        <div className="mt-1 text-sm text-slate-600">{c.label}</div>
+        {c.hint && <div className="mt-1 text-xs text-amber-700">⚠️ {c.hint}</div>}
+      </div>
+    ));
+  })()}
+</section>
+
 
 
       {/* Kanban */}
