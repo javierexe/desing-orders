@@ -8,7 +8,7 @@ from fastapi import HTTPException
 
 app = FastAPI(title="Design Orders API")
 
-OrderStatus = Literal["recibido", "en_progreso", "en_espera_cliente", "aprobado", "listo", "entregado","cancelado"]
+OrderStatus = Literal["recibido", "en_proceso", "en_espera_cliente", "aprobado", "listo", "entregado","cancelado"]
 Delivery = Literal["retiro", "despacho"]
 
 app.add_middleware(

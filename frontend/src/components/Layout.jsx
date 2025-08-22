@@ -21,9 +21,8 @@ export default function Layout({
     <div className="grid min-h-screen grid-cols-1 bg-slate-50 text-slate-800 lg:grid-cols-[260px_1fr]">
       {/* Sidebar desktop */}
       <aside className="hidden border-r border-slate-200 bg-white p-4 lg:block">
-        <div className="mb-6 flex items-center gap-2 text-xl font-bold">
-          <span className="inline-flex h-10 w-10 items-center justify-center rounded-full text-white"><img src="src/images/fondotransparente.png" alt="Logo del cliente" className="h-8 w-auto"/></span>
-          Design Orders
+        <div className="mb-6 flex items-center gap-2">
+          <img className="inline-flex items-center justify-center w-auto" src="src/images/ISOLOGOTIPO.svg" alt="Logo cliente"/>
         </div>
         <nav className="space-y-1 text-sm">
           {NAV.map(item => {
@@ -58,9 +57,9 @@ export default function Layout({
         }`}
       >
         <div className="mb-6 flex items-center justify-between">
-          <div className="flex items-center gap-2 text-xl font-bold">
-            <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-sky-600 text-white">DO</span>
-            Design Orders
+          <div className="flex items-center gap-2 text-l font-bold">
+            <img className="inline-flex items-center justify-center w-10" src="src/images/fondotransparente.png" alt="Logo cliente"/>
+            Gestión de Pedidos
           </div>
           <button onClick={() => setOpen(false)} className="rounded-lg p-2 hover:bg-slate-100" aria-label="Cerrar">✕</button>
         </div>

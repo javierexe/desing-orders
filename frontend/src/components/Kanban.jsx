@@ -19,14 +19,14 @@ import { CSS } from "@dnd-kit/utilities";
 
 const COLUMNS = [
   { key: "recibido", title: "Recibido" },
-  { key: "en_progreso", title: "En Progreso" },
+  { key: "en_proceso", title: "En Proceso" },
   { key: "listo", title: "Listo" },
   { key: "entregado", title: "Entregado" },
 ];
 
 const STATUS_STYLES = {
   recibido:         "bg-slate-100 text-slate-700 ring-slate-200",
-  en_progreso:      "bg-sky-100 text-sky-800 ring-sky-200",
+  en_proceso:      "bg-sky-100 text-sky-800 ring-sky-200",
   en_espera_cliente:"bg-amber-100 text-amber-800 ring-amber-200",
   aprobado:         "bg-indigo-100 text-indigo-800 ring-indigo-200",
   listo:            "bg-emerald-100 text-emerald-800 ring-emerald-200",
@@ -36,7 +36,7 @@ const STATUS_STYLES = {
 
 const STATUS_LABEL = {
   recibido: "Recibido",
-  en_progreso: "En progreso",
+  en_proceso: "En proceso",
   en_espera_cliente: "En espera cliente",
   aprobado: "Aprobado",
   listo: "Listo",
@@ -81,7 +81,7 @@ function KanbanCard({ order, listeners, attributes, setNodeRef, style }) {
 
         {order.due_date && (
           <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs ring-1 ${dueClass}`}>
-            📅 Vence: {order.due_date}
+            📅 Entrega: {order.due_date}
           </span>
         )}
       </div>
@@ -208,7 +208,7 @@ export default function Kanban({ orders = [], onChangeStatus }) {
 
                 {items.length === 0 && (
                   <div className="rounded-lg border border-dashed border-slate-200 p-4 text-center text-xs text-slate-400">
-                    Columna vacía.
+                    No hay pedidos en este estado.
                   </div>
                 )}
               </div>

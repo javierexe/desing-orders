@@ -2,7 +2,7 @@
 export default function Dashboard({ kpis = {}, orders = [] }) {
   const cards = [
     { label: "Recibidos",   value: kpis.recibido || 0,   icon: "📥" },
-    { label: "En Progreso", value: kpis.en_progreso || 0,icon: "🛠️" },
+    { label: "En proceso", value: kpis.en_proceso || 0,icon: "🛠️" },
     { label: "Listos",      value: kpis.listo || 0,      icon: "✅" },
     { label: "Entregados",  value: kpis.entregado || 0,  icon: "📦" },
     { label: "Atrasados",   value: kpis.overdue || 0,    icon: "⏰", danger: (kpis.overdue||0) > 0, hint: (kpis.soon||0) > 0 ? `Pronto: ${kpis.soon}` : "" },
