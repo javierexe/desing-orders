@@ -11,106 +11,20 @@ import {
 } from "@dnd-kit/core";
 import {
   SortableContext,
-  useSortable,
-  arrayMove,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
+import SortableCard from "./SortableCard";
+import KanbanCard from "./KanbanCard";
+import { STATUS_LABEL, STATUS_STYLES } from "./kanbanUtils";
+
 
 const COLUMNS = [
   { key: "recibido", title: "Recibido" },
   { key: "en_proceso", title: "En Proceso" },
   { key: "listo", title: "Listo" },
   { key: "entregado", title: "Entregado" },
+  { key: "cancelado", title: "Cancelado" }
 ];
-
-const STATUS_STYLES = {
-  recibido:         "bg-slate-100 text-slate-700 ring-slate-200",
-  en_proceso:      "bg-sky-100 text-sky-800 ring-sky-200",
-  en_espera_cliente:"bg-amber-100 text-amber-800 ring-amber-200",
-  aprobado:         "bg-indigo-100 text-indigo-800 ring-indigo-200",
-  listo:            "bg-emerald-100 text-emerald-800 ring-emerald-200",
-  entregado:        "bg-green-100 text-green-800 ring-green-200",
-  cancelado:        "bg-rose-100 text-rose-800 ring-rose-200",
-};
-
-const STATUS_LABEL = {
-  recibido: "Recibido",
-  en_proceso: "En proceso",
-  en_espera_cliente: "En espera cliente",
-  aprobado: "Aprobado",
-  listo: "Listo",
-  entregado: "Entregado",
-  cancelado: "Cancelado",
-};
-
-const isOverdue = (iso) => iso && new Date(iso) < new Date();
-const isSoon = (iso) => {
-  if (!iso) return false;
-  const ms = new Date(iso).getTime() - Date.now();
-  return ms > 0 && ms <= 48 * 60 * 60 * 1000; // 48h
-};
-
-function KanbanCard({ order, listeners, attributes, setNodeRef, style }) {
-  const dueClass = isOverdue(order.due_date)
-    ? "bg-rose-100 text-rose-800 ring-rose-200"
-    : isSoon(order.due_date)
-    ? "bg-amber-100 text-amber-800 ring-amber-200"
-    : "bg-slate-100 text-slate-700 ring-slate-200";
-
-  return (
-    <article
-      ref={setNodeRef}
-      {...attributes}
-      {...listeners}
-      style={style}
-      className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm"
-    >
-      <div className="text-sm font-semibold text-slate-800">
-        {order.title} <span className="text-slate-400">({order.code})</span>
-      </div>
-      <div className="mt-0.5 text-xs text-slate-500">
-        {order.client_name} · {order.delivery_method}
-      </div>
-
-      {/* Chips */}
-      <div className="mt-2 flex flex-wrap items-center gap-2">
-        <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs ring-1 ${STATUS_STYLES[order.status] || "bg-slate-100 text-slate-700 ring-slate-200"}`}>
-          {STATUS_LABEL[order.status] || order.status}
-        </span>
-
-        {order.due_date && (
-          <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs ring-1 ${dueClass}`}>
-            📅 Entrega: {order.due_date}
-          </span>
-        )}
-      </div>
-
-      {order.description && (
-        <p className="mt-2 line-clamp-2 text-sm text-slate-600">{order.description}</p>
-      )}
-    </article>
-  );
-}
-
-
-function SortableCard({ order, id }) {
-  const { attributes, listeners, setNodeRef, transform, transition } =
-    useSortable({ id });
-  const style = {
-    transform: CSS.Translate.toString(transform),
-    transition,
-  };
-  return (
-    <KanbanCard
-      order={order}
-      attributes={attributes}
-      listeners={listeners}
-      setNodeRef={setNodeRef}
-      style={style}
-    />
-  );
-}
 
 // Columna droppable (sin estilos ni highlight)
 function DroppableColumn({ id, children }) {
@@ -122,7 +36,7 @@ function DroppableColumn({ id, children }) {
   );
 }
 
-export default function Kanban({ orders = [], onChangeStatus }) {
+export default function Kanban({ orders = [], onChangeStatus, onEditOrder }) {
   // Agrupa IDs (codes) por estado, sin estado local
   const columnsState = useMemo(() => {
     const grouped = Object.fromEntries(COLUMNS.map(c => [c.key, []]));
@@ -202,7 +116,24 @@ export default function Kanban({ orders = [], onChangeStatus }) {
                 <SortableContext items={items} strategy={verticalListSortingStrategy}>
                   {items.map(id => {
                     const order = getOrderById(id);
-                    return order ? <SortableCard key={id} id={id} order={order} /> : null;
+                    return order ? (
+                      <SortableCard
+                        key={id}
+                        id={id}
+                        order={order}
+                        onEdit={onEditOrder}
+                        render={({ order, attributes, listeners, setNodeRef, style }) => (
+                          <KanbanCard
+                            order={order}
+                            attributes={attributes}
+                            listeners={listeners}
+                            setNodeRef={setNodeRef}
+                            style={style}
+                            onEdit={onEditOrder}
+                          />
+                        )}
+                      />
+                    ) : null;
                   })}
                 </SortableContext>
 

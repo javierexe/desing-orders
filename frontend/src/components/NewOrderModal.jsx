@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 const API = import.meta.env.VITE_API_BASE || "http://localhost:8000";
 
-export default function NewOrderModal({ open, onClose, onCreated }) {
+export default function NewOrderModal({ open, onClose, onCreated, onNotify, order = null, editMode = false }) {
   const [form, setForm] = useState({
     code: "",
     client_name: "",
@@ -11,6 +11,21 @@ export default function NewOrderModal({ open, onClose, onCreated }) {
     due_date: "",
     description: ""
   });
+
+  useEffect(() => {
+    if (editMode && order) {
+      setForm(order);
+    } else {
+      setForm({
+        code: "",
+        client_name: "",
+        title: "",
+        delivery_method: "retiro",
+        due_date: "",
+        description: ""
+      });
+    }
+  }, [order, editMode, open]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -21,17 +36,30 @@ export default function NewOrderModal({ open, onClose, onCreated }) {
     setLoading(true);
     setError("");
     try {
-      const res = await fetch(`${API}/orders`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
-      });
-      if (!res.ok) throw new Error("Error al crear el pedido");
+      let res;
+      if (editMode && order) {
+        res = await fetch(`${API}/orders/${order.code}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(form),
+        });
+        if (!res.ok) throw new Error("Error al editar el pedido");
+        onNotify?.("Pedido editado correctamente", "success");
+      } else {
+        res = await fetch(`${API}/orders`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(form),
+        });
+        if (!res.ok) throw new Error("Error al crear el pedido");
+        onNotify?.("Pedido creado correctamente", "success");
+      }
       setForm({ code:"", client_name:"", title:"", delivery_method:"retiro", due_date:"", description:"" });
       onCreated?.();      // refresca lista afuera
       onClose?.();        // cierra modal
     } catch (err) {
       setError(err.message || "Error de red");
+      onNotify?.(err.message || "Error de red", "error");
     } finally {
       setLoading(false);
     }
@@ -41,7 +69,7 @@ export default function NewOrderModal({ open, onClose, onCreated }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
       <div className="w-full max-w-2xl rounded-2xl border border-slate-200 bg-white p-5 shadow-xl">
         <div className="mb-3 flex items-center justify-between">
-          <h3 className="text-lg font-semibold">Nuevo pedido</h3>
+          <h3 className="text-lg font-semibold">{editMode ? "Editar pedido" : "Nuevo pedido"}</h3>
           <button
             onClick={onClose}
             className="rounded-lg p-2 text-slate-500 hover:bg-slate-100"
@@ -60,6 +88,7 @@ export default function NewOrderModal({ open, onClose, onCreated }) {
               onChange={e=>setForm({...form, code:e.target.value})}
               className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 outline-none focus:ring-2 focus:ring-sky-400"
               placeholder="PED-0001"
+              disabled={editMode}
             />
           </label>
 
@@ -124,7 +153,7 @@ export default function NewOrderModal({ open, onClose, onCreated }) {
               type="submit"
               className="rounded-xl bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-700 disabled:opacity-50"
             >
-              Crear
+              {editMode ? "Guardar cambios" : "Crear"}
             </button>
             <button
               type="button"
