@@ -14,7 +14,7 @@ const isSoon = (iso) => {
   return ms > 0 && ms <= 48 * 60 * 60 * 1000; // 48h
 };
 function getKpis(orders){
-  const k = { total: orders.length, recibido:0, en_progreso:0, listo:0, entregado:0, overdue:0, soon:0 };
+  const k = { total: orders.length, recibido:0, en_proceso:0, listo:0, entregado:0, overdue:0, soon:0 };
   for (const o of orders) {
     if (k[o.status] !== undefined) k[o.status] += 1;
     if (isOverdue(o.due_date)) k.overdue += 1;
