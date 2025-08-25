@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 
-const API = import.meta.env.VITE_API_BASE || "http://localhost:8000";
+const API = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 
 export default function NewOrderModal({ open, onClose, onCreated, onNotify, order = null, editMode = false }) {
   const [form, setForm] = useState({
@@ -87,7 +87,7 @@ export default function NewOrderModal({ open, onClose, onCreated, onNotify, orde
               value={form.code}
               onChange={e=>setForm({...form, code:e.target.value})}
               className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 outline-none focus:ring-2 focus:ring-sky-400"
-              placeholder="PED-0001"
+              placeholder="PED-001"
               disabled={editMode}
             />
           </label>

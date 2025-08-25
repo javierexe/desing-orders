@@ -100,7 +100,7 @@ export default function Kanban({ orders = [], onChangeStatus, onEditOrder }) {
       onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
     >
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
         {COLUMNS.map(col => {
           const items = columnsState[col.key] || [];
           return (
@@ -115,6 +115,12 @@ export default function Kanban({ orders = [], onChangeStatus, onEditOrder }) {
               <div className="min-h-[240px] space-y-3 border-t border-slate-100 p-3">
                 <SortableContext items={items} strategy={verticalListSortingStrategy}>
                   {items.map(id => {
+                    // Ordena los IDs por fecha de entrega antes de renderizar (asume campo delivery_date)
+                    items.sort((a, b) => {
+                      const da = new Date(getOrderById(a)?.due_date || 0);
+                      const db = new Date(getOrderById(b)?.due_date || 0);
+                      return da - db;
+                    });
                     const order = getOrderById(id);
                     return order ? (
                       <SortableCard
