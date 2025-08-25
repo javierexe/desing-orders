@@ -58,7 +58,7 @@ export default function Layout({
       >
         <div className="mb-6 flex items-center justify-between">
           <div className="flex items-center gap-2 text-l font-bold">
-            <img className="inline-flex items-center justify-center w-10" src="src/images/fondotransparente.png" alt="Logo cliente"/>
+            <img className="inline-flex items-center justify-center w-10" src="/images/fondotransparente.png" alt="Logo cliente"/>
             Gestión de Pedidos
           </div>
           <button onClick={() => setOpen(false)} className="rounded-lg p-2 hover:bg-slate-100" aria-label="Cerrar">✕</button>
