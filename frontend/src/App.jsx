@@ -1,6 +1,7 @@
 // frontend/src/App.jsx
 import React, { useEffect, useMemo, useState } from "react";
-import Layout from "./components/Layout.jsx";              // 👈 faltaba
+import { BrowserRouter, Routes, Route, Navigate, useNavigate } from "react-router-dom";
+import Layout from "./components/Layout.jsx";
 import Kanban from "./components/Kanban.jsx";
 import NewOrderModal from "./components/NewOrderModal.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
@@ -13,8 +14,8 @@ const isSoon = (iso) => {
   const ms = new Date(iso).getTime() - Date.now();
   return ms > 0 && ms <= 48 * 60 * 60 * 1000; // 48h
 };
-function getKpis(orders){
-  const k = { total: orders.length, recibido:0, en_proceso:0, listo:0, entregado:0, overdue:0, soon:0 };
+function getKpis(orders) {
+  const k = { total: orders.length, recibido: 0, en_proceso: 0, listo: 0, entregado: 0, overdue: 0, soon: 0 };
   for (const o of orders) {
     if (k[o.status] !== undefined) k[o.status] += 1;
     if (isOverdue(o.due_date)) k.overdue += 1;
@@ -23,18 +24,25 @@ function getKpis(orders){
   return k;
 }
 
-export default function App() {
-  // ⬇️ Hooks SOLO dentro del componente
+// Normalizador para filtro
+function normalize(s = "") {
+  return s.toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu, "");
+}
+
+function AppInner() {
+  const navigate = useNavigate();
+
+  // STATE
   const [orders, setOrders] = useState([]);
   const [showNew, setShowNew] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
-  const [page, setPage] = useState("dashboard"); // "orders" si quieres abrir el kanban
   const [query, setQuery] = useState("");
   const [orderToEdit, setOrderToEdit] = useState(null);
   const [toast, setToast] = useState(null);
 
   const kpis = useMemo(() => getKpis(orders), [orders]);
 
+  // DATA
   useEffect(() => { fetchOrders(); }, []);
   async function fetchOrders() {
     const data = await api.listOrders();
@@ -53,8 +61,6 @@ export default function App() {
     setTimeout(() => setToast(null), 3000);
   }
 
-  // Filtro para Pedidos
-  function normalize(s=""){ return s.toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu,""); }
   const filtered = useMemo(() => (
     orders.filter(o => {
       const q = normalize(query);
@@ -64,6 +70,12 @@ export default function App() {
     })
   ), [orders, query]);
 
+  // Navegación desde Layout (mantiene tu API onNav existente)
+  const handleNav = (p) => {
+    if (p === "orders") navigate("/pedidos");
+    else if (p === "dashboard") navigate("/dashboard");
+  };
+
   return (
     <>
       {toast && (
@@ -71,71 +83,96 @@ export default function App() {
           {toast.msg}
         </div>
       )}
-      <Layout
-        title={page === "dashboard" ? "Dashboard" : "Pedidos"}
-        active={page}
-        onNav={setPage}
-        right={page === "orders" ? (
-          <button
-            onClick={() => { setShowNew(true); setShowEdit(false); }}
-            className="rounded-xl bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-700"
-          >
-            + Nuevo pedido
-          </button>
-        ) : null}
-      >
-        {page === "dashboard" && (
-          <Dashboard kpis={kpis} orders={orders} />
-        )}
 
-        {page === "orders" && (
-          <>
-            <div className="mb-4 flex items-center gap-2">
-              <input
-                value={query}
-                onChange={(e)=>setQuery(e.target.value)}
-                placeholder="Buscar por código, cliente o título…"
-                className="w-full max-w-md rounded-2xl border border-slate-300 bg-white px-4 py-2 outline-none focus:ring-2 focus:ring-sky-400"
-              />
-              {query && (
+      <Routes>
+        {/* Redirección raíz a Pedidos */}
+        <Route path="/" element={<Navigate to="/pedidos" replace />} />
+
+        <Route
+          path="/dashboard"
+          element={
+            <Layout title="Dashboard">
+              <Dashboard kpis={kpis} orders={orders} />
+            </Layout>
+          }
+        />
+
+        <Route
+          path="/pedidos"
+          element={
+            <Layout
+              title="Pedidos"
+              right={
                 <button
-                  onClick={() => setQuery("")}
-                  className="rounded-xl border border-slate-300 px-3 py-2 text-sm hover:bg-slate-50"
+                  onClick={() => { setShowNew(true); setShowEdit(false); }}
+                  className="rounded-xl bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-700"
                 >
-                  Limpiar
+                  + Nuevo pedido
                 </button>
-              )}
-            </div>
+              }
+            >
+              {/* Barra de búsqueda */}
+              <div className="mb-4 flex items-center gap-2">
+                <input
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Buscar por código, cliente o título…"
+                  className="w-full max-w-md rounded-2xl border border-slate-300 bg-white px-4 py-2 outline-none focus:ring-2 focus:ring-sky-400"
+                />
+                {query && (
+                  <button
+                    onClick={() => setQuery("")}
+                    className="rounded-xl border border-slate-300 px-3 py-2 text-sm hover:bg-slate-50"
+                  >
+                    Limpiar
+                  </button>
+                )}
+              </div>
 
-            <section className="mt-0">
-              <Kanban
-                orders={filtered}
-                onChangeStatus={handleChangeStatus}
-                onEditOrder={order => {
-                  setOrderToEdit(order);
-                  setShowEdit(true);
-                  setShowNew(false);
-                }}
+              {/* Kanban */}
+              <section className="mt-0">
+                <Kanban
+                  orders={filtered}
+                  onChangeStatus={handleChangeStatus}
+                  onEditOrder={order => {
+                    setOrderToEdit(order);
+                    setShowEdit(true);
+                    setShowNew(false);
+                  }}
+                />
+              </section>
+
+              {/* Modales: crear y editar */}
+              <NewOrderModal
+                open={showNew}
+                onClose={() => setShowNew(false)}
+                onCreated={fetchOrders}
+                onNotify={showToast}
               />
-            </section>
+              <NewOrderModal
+                open={showEdit}
+                onClose={() => { setShowEdit(false); setOrderToEdit(null); }}
+                onCreated={fetchOrders}
+                order={orderToEdit}
+                editMode={true}
+                onNotify={showToast}
+              />
+            </Layout>
+          }
+        />
 
-            <NewOrderModal
-              open={showNew}
-              onClose={() => setShowNew(false)}
-              onCreated={fetchOrders}
-              onNotify={showToast}
-            />
-            <NewOrderModal
-              open={showEdit}
-              onClose={() => { setShowEdit(false); setOrderToEdit(null); }}
-              onCreated={fetchOrders}
-              order={orderToEdit}
-              editMode={true}
-              onNotify={showToast}
-            />
-          </>
-        )}
-      </Layout>
+        {/* Fallback 404 → Pedidos */}
+        <Route path="*" element={<Navigate to="/pedidos" replace />} />
+      </Routes>
     </>
   );
 }
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <AppInner />
+    </BrowserRouter>
+  );
+}
+

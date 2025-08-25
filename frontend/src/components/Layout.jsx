@@ -1,21 +1,29 @@
+// frontend/src/components/Layout.jsx
 import React, { useState } from "react";
+import { NavLink } from "react-router-dom";
 
 export default function Layout({
   title = "Design Orders",
   right = null,
   children,
-  active = "orders",          // "dashboard" | "orders" | ...
-  onNav = () => {},           // (key) => void
+  // props legacy, no necesarios con router:
+  active,          // eslint-disable-line
+  onNav = () => {},// eslint-disable-line
 }) {
   const [open, setOpen] = useState(false);
 
   const NAV = [
-    { label: "Dashboard", key: "dashboard" },
-    { label: "Pedidos",   key: "orders" },
-    { label: "Clientes",  key: "clients", disabled: true },
-    { label: "Reportes",  key: "reports", disabled: true },
-    { label: "Configuración", key: "settings", disabled: true },
+    { label: "Pedidos",   key: "orders",    path: "/pedidos" },
+    { label: "Dashboard", key: "dashboard", path: "/dashboard" },
+    { label: "Clientes",  key: "clients",   path: "#", disabled: true },
+    { label: "Reportes",  key: "reports",   path: "#", disabled: true },
+    { label: "Configuración", key: "settings", path: "#", disabled: true },
   ];
+
+  const baseItem =
+    "block w-full text-left rounded-xl px-3 py-2 hover:bg-slate-100";
+  const activeItem = "bg-slate-100 font-medium";
+  const disabledItem = "opacity-50 cursor-not-allowed";
 
   return (
     <div className="grid min-h-screen grid-cols-1 bg-slate-50 text-slate-800 lg:grid-cols-[260px_1fr]">
@@ -25,20 +33,25 @@ export default function Layout({
           <img className="inline-flex items-center justify-center w-auto" src="/images/ISOLOGOTIPO.svg" alt="Logo cliente"/>
         </div>
         <nav className="space-y-1 text-sm">
-          {NAV.map(item => {
-            const isActive = active === item.key;
-            return (
-              <button
-                key={item.key}
-                onClick={() => !item.disabled && onNav(item.key)}
-                className={`w-full text-left flex items-center gap-2 rounded-xl px-3 py-2
-                  ${isActive ? "bg-slate-100 font-medium" : "hover:bg-slate-100"}
-                  ${item.disabled ? "opacity-50 cursor-not-allowed" : ""}`}
-              >
-                <span>•</span> {item.label}
-              </button>
-            );
-          })}
+          {NAV.map(item => (
+            <NavLink
+              key={item.key}
+              to={item.disabled ? "#" : item.path}
+              className={({ isActive }) =>
+                [
+                  "w-full text-left flex items-center gap-2 rounded-xl px-3 py-2",
+                  isActive ? activeItem : "hover:bg-slate-100",
+                  item.disabled ? disabledItem : "",
+                ].join(" ")
+              }
+              onClick={(e) => {
+                if (item.disabled) e.preventDefault();
+              }}
+              end
+            >
+              <span>•</span> {item.label}
+            </NavLink>
+          ))}
         </nav>
       </aside>
 
@@ -64,20 +77,26 @@ export default function Layout({
           <button onClick={() => setOpen(false)} className="rounded-lg p-2 hover:bg-slate-100" aria-label="Cerrar">✕</button>
         </div>
         <nav className="space-y-1 text-sm">
-          {NAV.map(item => {
-            const isActive = active === item.key;
-            return (
-              <button
-                key={item.key}
-                onClick={() => { if (!item.disabled) { onNav(item.key); setOpen(false); } }}
-                className={`block w-full text-left rounded-xl px-3 py-2
-                  ${isActive ? "bg-slate-100 font-medium" : "hover:bg-slate-100"}
-                  ${item.disabled ? "opacity-50 cursor-not-allowed" : ""}`}
-              >
-                {item.label}
-              </button>
-            );
-          })}
+          {NAV.map(item => (
+            <NavLink
+              key={item.key}
+              to={item.disabled ? "#" : item.path}
+              className={({ isActive }) =>
+                [
+                  baseItem,
+                  isActive ? activeItem : "",
+                  item.disabled ? disabledItem : "",
+                ].join(" ")
+              }
+              onClick={(e) => {
+                if (item.disabled) e.preventDefault();
+                setOpen(false);
+              }}
+              end
+            >
+              {item.label}
+            </NavLink>
+          ))}
         </nav>
       </aside>
 
