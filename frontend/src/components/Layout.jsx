@@ -22,7 +22,7 @@ export default function Layout({
       {/* Sidebar desktop */}
       <aside className="hidden border-r border-slate-200 bg-white p-4 lg:block">
         <div className="mb-6 flex items-center gap-2">
-          <img className="inline-flex items-center justify-center w-auto" src="src/images/ISOLOGOTIPO.svg" alt="Logo cliente"/>
+          <img className="inline-flex items-center justify-center w-auto" src="/images/ISOLOGOTIPO.svg" alt="Logo cliente"/>
         </div>
         <nav className="space-y-1 text-sm">
           {NAV.map(item => {
