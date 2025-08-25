@@ -38,13 +38,14 @@ def list_orders(db: Session = Depends(get_db)):
 
 @app.post("/orders", response_model=schemas.OrderOut, status_code=201)
 def create_order(payload: schemas.OrderCreate, db: Session = Depends(get_db)):
-    if db.query(models.Order).filter(models.Order.code == payload.code).first():
-        raise HTTPException(status_code=409, detail="El código ya existe")
-    order = models.Order(**payload.model_dump())
+    # ⚠️ Ya no revisamos code, la BD lo maneja.
+    # Creamos el objeto sin 'code'
+    order = models.Order(**payload.model_dump(exclude={"code"}))
     db.add(order)
     db.commit()
-    db.refresh(order)
+    db.refresh(order)  # aquí ya viene con el code generado por la BD
     return order
+
 
 @app.patch("/orders/{code}", response_model=schemas.OrderOut)
 def update_status(code: str, status: str, db: Session = Depends(get_db)):

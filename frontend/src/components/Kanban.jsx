@@ -15,7 +15,6 @@ import {
 } from "@dnd-kit/sortable";
 import SortableCard from "./SortableCard";
 import KanbanCard from "./KanbanCard";
-import { STATUS_LABEL, STATUS_STYLES } from "./kanbanUtils";
 
 
 const COLUMNS = [

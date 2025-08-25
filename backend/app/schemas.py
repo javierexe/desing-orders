@@ -12,9 +12,12 @@ class OrderBase(BaseModel):
     due_date: Optional[date] = None
 
 class OrderCreate(OrderBase):
-    pass
+    status: str | None = None
 
 class OrderOut(OrderBase):
     id: int
+    code: str
+    status: str
+    
     class Config:
         from_attributes = True  # Pydantic v2
