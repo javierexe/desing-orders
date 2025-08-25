@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from "react";
+import { buildOrderPayload, fetchJSON, HttpError } from "../utils/http"; // ajusta la ruta
 
 const API = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 
@@ -63,7 +64,25 @@ export default function NewOrderModal({
     // si quieres due_date obligatorio: && form.due_date?.trim()
   );
 
-  if (!open) return null;
+  async function readError(res) {
+  try {
+    const data = await res.json();
+    if (data?.detail) {
+      if (Array.isArray(data.detail)) {
+        // FastAPI validation errors → formato: loc + mensaje
+        return data.detail
+          .map(d => `${d.loc?.join(".")}: ${d.msg}`)
+          .join(" | ");
+      }
+      return typeof data.detail === "string"
+        ? data.detail
+        : JSON.stringify(data.detail);
+    }
+    return JSON.stringify(data);
+  } catch {
+    return res.statusText || "Error";
+  }
+}
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -71,36 +90,55 @@ export default function NewOrderModal({
 
     setLoading(true);
     setError("");
+
+    const payload = buildOrderPayload(form);
+    
     try {
-      let res;
       if (editMode && order) {
-        res = await fetch(`${API}/orders/${order.code}`, {
-          method: "PATCH", // si tu backend usa PUT, cámbialo
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(form),
-        });
-        if (!res.ok) throw new Error("Error al editar el pedido");
-        onNotify?.("Pedido editado correctamente", "success");
-      } else {
-        res = await fetch(`${API}/orders`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(form), // BD genera code
-        });
-        if (!res.ok) throw new Error("Error al crear el pedido");
-        const created = await res.json();
-        onNotify?.(`Pedido creado: ${created.code}`, "success");
-      }
-      onCreated?.(); // refresca lista
-      onClose?.();   // cierra modal
-    } catch (err) {
-      const msg = err.message || "Error de red";
-      setError(msg);
-      onNotify?.(msg, "error");
-    } finally {
-      setLoading(false);
+      await fetchJSON(`${API}/orders/${order.code}`, {
+        method: "PATCH",
+        body: JSON.stringify(payload),
+      });
+      onNotify?.("Pedido editado correctamente", "success");
+    } else {
+      const { data } = await fetchJSON(`${API}/orders`, {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
+      onNotify?.(`Pedido creado: ${data.code}`, "success");
     }
+
+    onCreated?.();
+    onClose?.();
+  } catch (err) {
+    let msg = "Error de red";
+    let status = null;
+
+    if (err instanceof HttpError) {
+    status = err.status;
+    msg = err.message || msg;
+  } else if (err?.message) {
+    msg = err.message;
   }
+
+  // Log detallado en consola para debug
+  // (no se muestra al usuario, solo ayuda)
+  console.groupCollapsed("[Orders] Error al guardar");
+  console.error("Status:", status);
+  console.error("Message:", msg);
+  console.error("Payload:", buildOrderPayload(form));
+  console.groupEnd();
+
+  // Notificación visible para el usuario
+  const pretty = status ? `[${status}] ${msg}` : msg;
+  setError(pretty);
+  onNotify?.(pretty, "error");
+} finally {
+    setLoading(false);
+  }
+  }
+  
+  if (!open) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">

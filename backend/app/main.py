@@ -48,11 +48,13 @@ def create_order(payload: schemas.OrderCreate, db: Session = Depends(get_db)):
 
 
 @app.patch("/orders/{code}", response_model=schemas.OrderOut)
-def update_status(code: str, status: str, db: Session = Depends(get_db)):
+def update_order(code: str, payload: schemas.OrderUpdate, db: Session = Depends(get_db)):
     order = db.query(models.Order).filter(models.Order.code == code).first()
     if not order:
         raise HTTPException(status_code=404, detail="Pedido no encontrado")
-    order.status = status
+    for field, value in payload.model_dump(exclude_unset=True).items():
+        setattr(order, field, value)
     db.commit()
     db.refresh(order)
     return order
+
