@@ -45,7 +45,7 @@ const KanbanCard = React.memo(function KanbanCard({
       {...attributes}
       {...listeners}
       style={style}
-      className="w-full rounded-xl border border-slate-200 bg-white p-3 shadow-sm hover:bg-slate-50 cursor-move"    
+      className="relative w-full rounded-xl border border-slate-200 bg-white p-3 shadow-sm hover:bg-slate-50 cursor-move"    
     >
       {/* Botón de edición (top-right). Usa stopPropagation para no iniciar drag */}
       <button

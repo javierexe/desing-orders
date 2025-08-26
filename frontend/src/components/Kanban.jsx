@@ -156,7 +156,7 @@ export default function Kanban({ orders = [], onChangeStatus, onEditOrder }) {
       onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
     >
-      <div className="grid w-full max-w-none min-w-0 gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="grid w-full gap-4 [grid-template-columns:repeat(auto-fit,minmax(240px,1fr))]">
         {COLUMNS.map((col) => {
           const items = columns[col.key] || [];
 
