@@ -1,46 +1,35 @@
 // frontend/src/lib/api.js
-const API = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+const DEV = import.meta.env.DEV;
 
-console.log("API base:", API);
+// En desarrollo (Vite) usamos el proxy: /api
+// En producción, si existe, usamos VITE_API_BASE_URL (ej: https://tu-backend.com)
+const API_BASE =
+  (DEV ? "/api" : import.meta.env.VITE_API_BASE_URL) || "/api";
+
+async function http(path, options = {}) {
+  const res = await fetch(`${API_BASE}${path}`, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...(options.headers || {}),
+    },
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
 
 export const api = {
-  async listOrders() {
-    try {
-      const res = await fetch(`${API}/orders`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      return await res.json();
-    } catch (e) {
-      console.error("listOrders error:", `${API}/orders`, e);
-      throw e;
-    }
+  listOrders() {
+    return http("/orders");
   },
-
-  async createOrder(order) {
-    try {
-      const res = await fetch(`${API}/orders`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(order),
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      return await res.json();
-    } catch (e) {
-      console.error("createOrder error:", `${API}/orders`, e);
-      throw e;
-    }
+  createOrder(order) {
+    return http("/orders", { method: "POST", body: JSON.stringify(order) });
   },
-
-  async updateStatus(code, status) {
-    try {
-      const res = await fetch(`${API}/orders/${code}?status=${encodeURIComponent(status)}`, {
-        method: "PATCH",
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      return await res.json();
-    } catch (e) {
-      console.error("updateStatus error:", `${API}/orders/${code}`, e);
-      throw e;
-    }
+  updateStatus(code, status) {
+    return http(`/orders/${encodeURIComponent(code)}?status=${encodeURIComponent(status)}`, {
+      method: "PATCH",
+    });
   },
 };
+
 

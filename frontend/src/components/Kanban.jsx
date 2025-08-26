@@ -2,29 +2,27 @@
 import React, { useState, useEffect } from "react";
 import {
   DndContext,
-  PointerSensor,
+  MouseSensor,
+  TouchSensor,
   useSensor,
   useSensors,
   DragOverlay,
-  useDroppable,
   closestCorners,
+  useDroppable,
 } from "@dnd-kit/core";
-import {
-  SortableContext,
-  verticalListSortingStrategy,
-} from "@dnd-kit/sortable";
+import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import SortableCard from "./SortableCard";
 import KanbanCard from "./KanbanCard";
+import NewOrderModal from "./NewOrderModal";
 
 const COLUMNS = [
-  { key: "recibido",     title: "Recibido" },
-  { key: "en_proceso",   title: "En Proceso" },
-  { key: "listo",        title: "Listo" },
-  { key: "entregado",    title: "Entregado" },
-  { key: "cancelado",    title: "Cancelado" },
+  { key: "recibido",   title: "Recibido" },
+  { key: "en_proceso", title: "En Proceso" },
+  { key: "listo",      title: "Listo" },
+  { key: "entregado",  title: "Entregado" },
+  { key: "cancelado",  title: "Cancelado" },
 ];
 
-// Mapa si el backend espera otros textos
 const BACKEND_STATUS = {
   recibido: "recibido",
   en_proceso: "en proceso",
@@ -33,42 +31,66 @@ const BACKEND_STATUS = {
   cancelado: "cancelado",
 };
 
-// Normaliza estados del backend -> claves de COLUMNS
 const normalizeStatus = (s = "") =>
-  s
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/\p{Diacritic}/gu, "")
-    .replace(/\s+/g, "_");
+  s.toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu, "").replace(/\s+/g, "_");
 
-// Columna: el droppable ahora vive en el contenedor de LISTA
-function DroppableColumn({ id, header, children }) {
-  const { setNodeRef } = useDroppable({ id });
+// Componente de columna (maneja useDroppable)
+function Column({ col, itemIds, getOrderById, onEdit }) {
+  const { setNodeRef, isOver } = useDroppable({
+    id: col.key,
+    data: { columnId: col.key },
+  });
+
   return (
-    <section id={id} className="flex w-full min-w-0 flex-col rounded-2xl border border-slate-200 bg-white">
-  {header}
-  <div
-    ref={setNodeRef}
-    className="min-h-[240px] space-y-3 border-t border-slate-100 p-3"
-  >
-    {children}
-  </div>
-</section>
+    <div className="bg-slate-50 rounded-xl border border-slate-200">
+      <header className="px-3 py-2 text-sm font-medium text-slate-700">
+        {col.title}
+      </header>
 
-
+      <div
+        ref={setNodeRef}
+        className="kanban-column overflow-y-auto overscroll-contain touch-pan-y ios-smooth px-2 pb-3 max-h-[calc(100vh-220px)] min-h-12"
+        style={isOver ? { background: "rgba(148,163,184,0.12)" } : undefined}
+      >
+        <SortableContext id={col.key} items={itemIds} strategy={verticalListSortingStrategy}>
+          {itemIds.map((id) => {
+            const order = getOrderById(id);
+            if (!order) return null;
+            return (
+              <SortableCard
+                key={id}
+                id={id}
+                order={order}
+                onEdit={onEdit}
+                render={({ order, attributes, listeners, setNodeRef, style, onEdit }) => (
+                  <KanbanCard
+                    order={order}
+                    attributes={attributes}
+                    listeners={listeners}
+                    setNodeRef={setNodeRef}
+                    style={style}
+                    onEdit={onEdit}
+                  />
+                )}
+              />
+            );
+          })}
+        </SortableContext>
+      </div>
+    </div>
   );
 }
 
-export default function Kanban({ orders = [], onChangeStatus, onEditOrder }) {
+export default function Kanban({ orders = [], onChangeStatus }) {
   const toId = (v) => String(v);
   const getOrderById = (id) => orders.find((o) => toId(o.code) === toId(id));
 
-  // Estado local para feedback visual
+  // Estado por columnas
   const [columns, setColumns] = useState(() =>
     Object.fromEntries(COLUMNS.map((c) => [c.key, []]))
   );
 
-  // Sincroniza con orders
+  // Sincroniza con pedidos del backend
   useEffect(() => {
     const grouped = Object.fromEntries(COLUMNS.map((c) => [c.key, []]));
     for (const o of orders) {
@@ -79,10 +101,18 @@ export default function Kanban({ orders = [], onChangeStatus, onEditOrder }) {
     setColumns(grouped);
   }, [orders]);
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 2 } })
-  );
+  // Sensores
+  const mouseSensor = useSensor(MouseSensor, { activationConstraint: { distance: 6 } });
+  const touchSensor = useSensor(TouchSensor, { activationConstraint: { delay: 180, tolerance: 6 } });
+  const sensors = useSensors(mouseSensor, touchSensor);
 
+  // Modal
+  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [modalOpen, setModalOpen] = useState(false);
+  const handleEdit = (order) => { setSelectedOrder(order); setModalOpen(true); };
+  const closeModal = () => { setModalOpen(false); setSelectedOrder(null); };
+
+  // Overlay
   const [activeId, setActiveId] = useState(null);
   const activeOrder = orders.find((o) => toId(o.code) === toId(activeId)) || null;
 
@@ -101,7 +131,6 @@ export default function Kanban({ orders = [], onChangeStatus, onEditOrder }) {
   function handleDragOver(e) {
     const { active, over } = e;
     if (!over) return;
-
     const aId = toId(active.id);
     const oId = toId(over.id);
 
@@ -110,13 +139,10 @@ export default function Kanban({ orders = [], onChangeStatus, onEditOrder }) {
       const to = findContainerOf(oId, prev) || oId;
       if (!from || !to || from === to) return prev;
 
-      const next = structuredClone(prev);
-      if (!next[to]) return prev; // defensa: destino inválido
+      const next = JSON.parse(JSON.stringify(prev)); // copia segura
 
-      // quitar del origen
       next[from] = (next[from] || []).filter((x) => x !== aId);
 
-      // insertar en destino, respetando posición si cae sobre item
       const overItems = next[to] || [];
       const overIndex = overItems.indexOf(oId);
       const insertAt = overIndex >= 0 ? overIndex : overItems.length;
@@ -156,77 +182,24 @@ export default function Kanban({ orders = [], onChangeStatus, onEditOrder }) {
       onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
     >
-      <div className="grid w-full gap-4 [grid-template-columns:repeat(auto-fit,minmax(240px,1fr))]">
-        {COLUMNS.map((col) => {
-          const items = columns[col.key] || [];
-
-          // No mutar en render
-          const sortedItems = [...items].sort((a, b) => {
-            const da = new Date(getOrderById(a)?.due_date || 0);
-            const db = new Date(getOrderById(b)?.due_date || 0);
-            return da - db;
-          });
-
-          return (
-            <DroppableColumn
-              key={col.key}
-              id={col.key}
-              header={
-                <header className="flex items-center justify-between px-4 py-3 min-w-0">
-                  <h3 className="text-sm font-semibold text-slate-700">{col.title}</h3>
-                  <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
-                    {sortedItems.length}
-                  </span>
-                </header>
-              }
-            >
-              <SortableContext items={sortedItems} strategy={verticalListSortingStrategy}>
-                {sortedItems.map((id) => {
-                  const order = getOrderById(id);
-                  return order ? (
-                    <SortableCard
-                      key={id}
-                      id={id}
-                      order={order}
-                      onEdit={onEditOrder}
-                      render={({ order, attributes, listeners, setNodeRef, style }) => (
-                        <KanbanCard
-                          order={order}
-                          attributes={attributes}
-                          listeners={listeners}
-                          setNodeRef={setNodeRef}
-                          // Mejoras desktop: evita selección/drag nativo del navegador
-                          style={{
-                            ...style,
-                            touchAction: "none",
-                            userSelect: "none",
-                            WebkitUserSelect: "none",
-                            WebkitUserDrag: "none",
-                            cursor: "grab",
-                          }}
-                          onEdit={onEditOrder}
-                        />
-                      )}
-                    />
-                  ) : null;
-                })}
-              </SortableContext>
-
-              {sortedItems.length === 0 && (
-                <div className="rounded-lg border border-dashed border-slate-200 p-4 text-center text-xs text-slate-400">
-                  No hay pedidos en este estado.
-                </div>
-              )}
-            </DroppableColumn>
-          );
-        })}
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-3 lg:grid-cols-5 p-3">
+        {COLUMNS.map((col) => (
+          <Column
+            key={col.key}
+            col={col}
+            itemIds={columns[col.key] || []}
+            getOrderById={getOrderById}
+            onEdit={handleEdit}
+          />
+        ))}
       </div>
 
       <DragOverlay dropAnimation={null}>
         {activeOrder ? (
           <div className="rounded-xl border border-slate-200 bg-white p-3 shadow">
             <div className="text-sm font-semibold text-slate-800">
-              {activeOrder.title} <span className="text-slate-400">({activeOrder.code})</span>
+              {activeOrder.title || activeOrder.client_name}{" "}
+              <span className="text-slate-400">({activeOrder.code})</span>
             </div>
             <div className="mt-0.5 text-xs text-slate-500">
               {activeOrder.client_name} · {activeOrder.delivery_method}
@@ -234,6 +207,16 @@ export default function Kanban({ orders = [], onChangeStatus, onEditOrder }) {
           </div>
         ) : null}
       </DragOverlay>
+
+      <NewOrderModal
+        open={modalOpen}
+        onClose={closeModal}
+        editMode={true}
+        order={selectedOrder}
+        onCreated={closeModal}
+        onNotify={(msg, type) => console.log(`[${type}]`, msg)}
+      />
     </DndContext>
   );
 }
+

@@ -13,6 +13,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:5173",
+        "http://192.168.1.98:5173",
         "https://desing-orders3d-world.vercel.app",  # tu dominio de prod
     ],
     allow_origin_regex=r"https://.*\.vercel\.app$",  # habilita todos los previews de Vercel

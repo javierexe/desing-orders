@@ -29,6 +29,7 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+.ios-smooth { -webkit-overflow-scrolling: touch; }
 
 /* Si te sirven… */
 a { font-weight: 500; text-decoration: inherit; }
