@@ -3,6 +3,18 @@ import { buildOrderPayload, fetchJSON, HttpError } from "../utils/http"; // ajus
 
 const API = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 
+// Helpers de fecha (solo fecha, sin hora/TZ)
+function todayISO() {
+  const t = new Date();
+  const y = t.getFullYear();
+  const m = String(t.getMonth() + 1).padStart(2, "0");
+  const d = String(t.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+function isBeforeTodayISO(iso) {
+  return !!iso && iso < todayISO();
+}
+
 export default function NewOrderModal({
   open,
   onClose,
@@ -44,7 +56,8 @@ export default function NewOrderModal({
         client_name: "",
         title: "",
         delivery_method: "retiro",
-        due_date: "",
+        // pre-carga con hoy para evitar fechas pasadas por accidente
+        due_date: todayISO(),
         description: ""
       };
       setForm(blank);
@@ -64,80 +77,70 @@ export default function NewOrderModal({
     // si quieres due_date obligatorio: && form.due_date?.trim()
   );
 
-  async function readError(res) {
-  try {
-    const data = await res.json();
-    if (data?.detail) {
-      if (Array.isArray(data.detail)) {
-        // FastAPI validation errors → formato: loc + mensaje
-        return data.detail
-          .map(d => `${d.loc?.join(".")}: ${d.msg}`)
-          .join(" | ");
-      }
-      return typeof data.detail === "string"
-        ? data.detail
-        : JSON.stringify(data.detail);
-    }
-    return JSON.stringify(data);
-  } catch {
-    return res.statusText || "Error";
-  }
-}
+  const isDueInvalid = !!form.due_date && isBeforeTodayISO(form.due_date);
 
   async function handleSubmit(e) {
     e.preventDefault();
     if (!isValid || (editMode && !isDirty) || loading) return;
 
+    // Validación: no permitir fechas anteriores a hoy
+    if (isDueInvalid) {
+      const msg = "La fecha de compromiso no puede ser anterior a hoy.";
+      setError(msg);
+      onNotify?.(msg, "warning");
+      return;
+    }
+
     setLoading(true);
     setError("");
 
     const payload = buildOrderPayload(form);
-    
+
     try {
       if (editMode && order) {
-      await fetchJSON(`${API}/orders/${order.code}`, {
-        method: "PATCH",
-        body: JSON.stringify(payload),
-      });
-      onNotify?.("Pedido editado correctamente", "success");
-    } else {
-      const { data } = await fetchJSON(`${API}/orders`, {
-        method: "POST",
-        body: JSON.stringify(payload),
-      });
-      onNotify?.(`Pedido creado: ${data.code}`, "success");
+        await fetchJSON(`${API}/orders/${order.code}`, {
+          method: "PATCH",
+          body: JSON.stringify(payload),
+        });
+        onNotify?.(`Pedido editado correctamente${order?.code ? `: ${order.code}` : ""}`, "success");
+      } else {
+        // FastAPI devuelve objeto plano: { code, ... }
+        const created = await fetchJSON(`${API}/orders`, {
+          method: "POST",
+          body: JSON.stringify(payload),
+        });
+        onNotify?.(`Pedido creado: ${created.code}`, "success");
+      }
+
+      onCreated?.();
+      onClose?.();
+    } catch (err) {
+      let msg = "Error de red";
+      let status = null;
+
+      if (err instanceof HttpError) {
+        status = err.status;
+        msg = err.message || msg;
+      } else if (err?.message) {
+        msg = err.message;
+      }
+
+      // Log detallado en consola para debug
+      console.groupCollapsed("[Orders] Error al guardar");
+      console.error("Status:", status);
+      console.error("Message:", msg);
+      console.error("Payload:", buildOrderPayload(form));
+      console.groupEnd();
+
+      // Notificación visible para el usuario
+      const pretty = status ? `[${status}] ${msg}` : msg;
+      setError(pretty);
+      onNotify?.(pretty, "error");
+    } finally {
+      setLoading(false);
     }
-
-    onCreated?.();
-    onClose?.();
-  } catch (err) {
-    let msg = "Error de red";
-    let status = null;
-
-    if (err instanceof HttpError) {
-    status = err.status;
-    msg = err.message || msg;
-  } else if (err?.message) {
-    msg = err.message;
   }
 
-  // Log detallado en consola para debug
-  // (no se muestra al usuario, solo ayuda)
-  console.groupCollapsed("[Orders] Error al guardar");
-  console.error("Status:", status);
-  console.error("Message:", msg);
-  console.error("Payload:", buildOrderPayload(form));
-  console.groupEnd();
-
-  // Notificación visible para el usuario
-  const pretty = status ? `[${status}] ${msg}` : msg;
-  setError(pretty);
-  onNotify?.(pretty, "error");
-} finally {
-    setLoading(false);
-  }
-  }
-  
   if (!open) return null;
 
   return (
@@ -197,6 +200,7 @@ export default function NewOrderModal({
             <input
               type="date"
               value={form.due_date}
+              min={todayISO()}
               onChange={(e) => setForm({ ...form, due_date: e.target.value })}
               className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 outline-none focus:ring-2 focus:ring-sky-400"
             />
@@ -216,13 +220,15 @@ export default function NewOrderModal({
 
           <div className="col-span-full flex items-center gap-3">
             <button
-              disabled={loading || (editMode && !isDirty) || !isValid}
-              aria-disabled={loading || (editMode && !isDirty) || !isValid}
+              disabled={loading || (editMode && !isDirty) || !isValid || isDueInvalid}
+              aria-disabled={loading || (editMode && !isDirty) || !isValid || isDueInvalid}
               title={
                 !isValid
                   ? "Completa los campos requeridos"
                   : editMode && !isDirty
                   ? "Sin cambios"
+                  : isDueInvalid
+                  ? "La fecha de compromiso no puede ser anterior a hoy"
                   : ""
               }
               type="submit"
