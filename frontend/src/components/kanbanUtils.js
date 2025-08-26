@@ -41,3 +41,15 @@ export function isSoon(d, days = 3) {
   soon.setDate(soon.getDate() + days);
   return due >= today && due <= soon;
 }
+
+// Devuelve true si la fecha es dentro de los próximos 7 días (pero no pronto ni atrasada)
+export function isThisWeek(d) {
+  if (!d) return false;
+  const due = new Date(d);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const week = new Date(today);
+  week.setDate(week.getDate() + 7);
+  // No es atrasada ni "pronto"
+  return due > today && due <= week && !isSoon(d);
+}

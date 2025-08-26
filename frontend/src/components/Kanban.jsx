@@ -43,13 +43,16 @@ function Column({ col, itemIds, getOrderById, onEdit }) {
 
   return (
     <div className="bg-slate-50 rounded-xl border border-slate-200">
-      <header className="px-3 py-2 text-sm font-medium text-slate-700">
-        {col.title}
+      <header className="px-3 py-2 text-md font-bold text-slate-700 flex items-center justify-between">
+        <span>{col.title}</span>
+        <span className="ml-2 mr-1 inline-flex items-center justify-center rounded-full bg-slate-200 text-slate-700 text-sm font-semibold px-2 py-0.5 min-w-[1.5rem]">
+          {itemIds.length}
+        </span>
       </header>
 
       <div
         ref={setNodeRef}
-        className="kanban-column overflow-y-auto overscroll-contain touch-pan-y ios-smooth px-2 pb-3 max-h-[calc(100vh-220px)] min-h-12"
+        className="kanban-column overflow-y-auto overscroll-contain touch-pan-y ios-smooth px-2 pb-3 max-h=[calc(100vh-220px)] min-h-12"
         style={isOver ? { background: "rgba(148,163,184,0.12)" } : undefined}
       >
         <SortableContext id={col.key} items={itemIds} strategy={verticalListSortingStrategy}>
@@ -182,11 +185,7 @@ export default function Kanban({ orders = [], onChangeStatus }) {
       onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
     >
-      <div
-  className="grid gap-3 p-3 
-             [grid-template-columns:repeat(auto-fill,minmax(320px,1fr))]"
->
-
+      <div className="grid gap-3 p-3 [grid-template-columns:repeat(auto-fill,minmax(300px,1fr))]">
         {COLUMNS.map((col) => (
           <Column
             key={col.key}

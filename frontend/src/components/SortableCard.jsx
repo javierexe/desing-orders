@@ -3,16 +3,11 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
 function SortableCard({ id, order, onEdit, render }) {
-  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id });
-    if (process.env.NODE_ENV !== "production") {
-      console.log("listeners keys", id, listeners && Object.keys(listeners));
-    }
+  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition } = useSortable({ id });
 
+  const style = { transform: CSS.Transform.toString(transform), transition };
 
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-  };
+  return render?.({ order, attributes, listeners, setNodeRef, setActivatorNodeRef, style: { transform: CSS.Transform.toString(transform), transition }, onEdit });
 
   if (typeof render === "function") {
     return render({ order, attributes, listeners, setNodeRef, style, onEdit });
