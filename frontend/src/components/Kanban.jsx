@@ -182,7 +182,11 @@ export default function Kanban({ orders = [], onChangeStatus }) {
       onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
     >
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-3 lg:grid-cols-5 p-3">
+      <div
+  className="grid gap-3 p-3 
+             [grid-template-columns:repeat(auto-fill,minmax(320px,1fr))]"
+>
+
         {COLUMNS.map((col) => (
           <Column
             key={col.key}
