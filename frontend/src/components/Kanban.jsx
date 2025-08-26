@@ -45,15 +45,17 @@ const normalizeStatus = (s = "") =>
 function DroppableColumn({ id, header, children }) {
   const { setNodeRef } = useDroppable({ id });
   return (
-    <section id={id} className="rounded-2xl border border-slate-200 bg-white">
-      {header}
-      <div
-        ref={setNodeRef} // <— droppable en el área real de drop
-        className="min-h-[240px] space-y-3 border-t border-slate-100 p-3"
-      >
-        {children}
-      </div>
-    </section>
+    <section id={id} className="flex w-full min-w-0 flex-col rounded-2xl border border-slate-200 bg-white">
+  {header}
+  <div
+    ref={setNodeRef}
+    className="min-h-[240px] space-y-3 border-t border-slate-100 p-3"
+  >
+    {children}
+  </div>
+</section>
+
+
   );
 }
 
@@ -154,7 +156,7 @@ export default function Kanban({ orders = [], onChangeStatus, onEditOrder }) {
       onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
     >
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+      <div className="grid w-full max-w-none min-w-0 gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-5">
         {COLUMNS.map((col) => {
           const items = columns[col.key] || [];
 
@@ -170,7 +172,7 @@ export default function Kanban({ orders = [], onChangeStatus, onEditOrder }) {
               key={col.key}
               id={col.key}
               header={
-                <header className="flex items-center justify-between px-4 py-3">
+                <header className="flex items-center justify-between px-4 py-3 min-w-0">
                   <h3 className="text-sm font-semibold text-slate-700">{col.title}</h3>
                   <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
                     {sortedItems.length}

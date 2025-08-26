@@ -23,7 +23,7 @@ function SortableCard({ id, order, onEdit, render }) {
       style={style}
       {...attributes}
       {...listeners}
-      className="rounded-lg border border-slate-200 bg-white p-3 shadow cursor-move"  
+      className="w-full rounded-lg border border-slate-200 bg-white p-3 shadow cursor-move"
     >
       <div className="text-sm font-semibold text-slate-800">
         {order.title} <span className="text-slate-400">({order.code})</span>

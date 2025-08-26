@@ -101,7 +101,7 @@ export default function Layout({
       </aside>
 
       {/* Main */}
-      <div className="p-4 lg:p-6">
+      <div className="w-full p-0 sm:p-4 lg:p-6">
         {/* Top bar */}
         <div className="mb-6">
           <div className="flex items-center justify-between">

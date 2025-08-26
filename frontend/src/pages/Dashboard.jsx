@@ -40,7 +40,7 @@ export default function Dashboard({ kpis = {}, orders = [] }) {
             <li key={o.code} className="py-2 text-sm">
               <span className="font-medium text-slate-800">{o.title}</span>
               <span className="text-slate-500"> · {o.client_name}</span>
-              {o.due_date && <span className="text-slate-500"> · vence {o.due_date}</span>}
+              {o.due_date && <span className="text-slate-500"> · vence en: {o.due_date}</span>}
             </li>
           ))}
           {orders.length === 0 && <li className="py-2 text-sm text-slate-500">Sin pedidos aún.</li>}
