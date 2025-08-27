@@ -30,7 +30,12 @@ const KanbanCard = React.memo(function KanbanCard({
     const today = new Date();
     const d0 = new Date(dueDate.getFullYear(), dueDate.getMonth(), dueDate.getDate());
     const t0 = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-    const diffDays = Math.round((d0 - t0) / 86400000);
+    const msDiff = d0 - t0;
+    const diffDays = msDiff === 0
+      ? 0
+      : msDiff > 0
+        ? Math.ceil(msDiff / 86400000) + 1
+        : Math.floor(msDiff / 86400000) + 1;
     if (diffDays > 1) return `${diffDays} días`;
     if (diffDays === 1) return "1 día";
     if (diffDays === 0) return "Hoy";
