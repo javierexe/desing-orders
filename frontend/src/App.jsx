@@ -52,8 +52,13 @@ function AppInner() {
   async function handleChangeStatus(code, status) {
     // actualización optimista
     setOrders(prev => prev.map(o => o.code === code ? { ...o, status } : o));
-    try { await api.updateStatus(code, status); }
-    catch (err) { console.error(err); await fetchOrders(); }
+    try {
+      await api.updateStatus(code, status);
+    } catch (err) {
+      console.error(err);
+      await fetchOrders();
+      showToast("No se pudo actualizar el estado", "error");
+    }
   }
 
   function showToast(msg, type = "success") {
@@ -75,6 +80,18 @@ function AppInner() {
     if (p === "orders") navigate("/pedidos");
     else if (p === "dashboard") navigate("/dashboard");
   };
+
+   // ✅ nuevo: eliminar
+  async function handleDelete(order) {
+    try {
+      await api.deleteOrder(order.code);
+      setOrders(prev => prev.filter(o => o.code !== order.code));
+      showToast(`Pedido ${order.code} eliminado`, "success");
+    } catch (err) {
+      console.error(err);
+      showToast("No se pudo eliminar el pedido", "error");
+    }
+  }
 
   return (
     <>
@@ -134,12 +151,10 @@ function AppInner() {
                 <Kanban
                   orders={filtered}
                   onChangeStatus={handleChangeStatus}
-                  onEditOrder={order => {
-                    setOrderToEdit(order);
-                    setShowEdit(true);
-                    setShowNew(false);
-                  }}
+                  onEditOrder={(order) => { setOrderToEdit(order); setShowEdit(true); }}
+                  onDelete={handleDelete}
                 />
+
               </section>
 
               {/* Modales: crear y editar */}
