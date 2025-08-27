@@ -1,9 +1,8 @@
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, Body, Response
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
-from typing import List
-
-from .db import SessionLocal, engine, Base
+from typing import List, Optional
+from .db import SessionLocal
 from . import models, schemas
 
 app = FastAPI()
@@ -49,13 +48,36 @@ def create_order(payload: schemas.OrderCreate, db: Session = Depends(get_db)):
 
 
 @app.patch("/orders/{code}", response_model=schemas.OrderOut)
-def update_order(code: str, payload: schemas.OrderUpdate, db: Session = Depends(get_db)):
+def update_order(
+    code: str, 
+    payload: schemas.OrderUpdate = Body(None),
+    status: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
     order = db.query(models.Order).filter(models.Order.code == code).first()
     if not order:
         raise HTTPException(status_code=404, detail="Pedido no encontrado")
-    for field, value in payload.model_dump(exclude_unset=True).items():
+    
+    data = payload.model_dump(exclude_unset=True) if payload else {}
+    if status is not None:
+        data["status"] = status
+
+    if not data:
+        return order
+
+    for field, value in data.items():
         setattr(order, field, value)
+
     db.commit()
     db.refresh(order)
     return order
 
+
+@app.delete("/orders/{code}", status_code=204)
+def delete_order(code: str, db: Session = Depends(get_db)):
+    order = db.query(models.Order).filter(models.Order.code == code).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Pedido no encontrado")
+    db.delete(order)
+    db.commit()
+    return Response(status_code=204)
