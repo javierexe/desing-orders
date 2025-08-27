@@ -1,7 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from "react";
-import { buildOrderPayload, fetchJSON, HttpError } from "../utils/http"; // ajusta la ruta
-
-const API = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+import { buildOrderPayload, HttpError } from "../utils/http";
+import { api } from "../lib/api";
 
 // Helpers de fecha (solo fecha, sin hora/TZ)
 function todayISO() {
@@ -14,11 +13,22 @@ function todayISO() {
 function isBeforeTodayISO(iso) {
   return !!iso && iso < todayISO();
 }
+// Normaliza cualquier valor de fecha a YYYY-MM-DD (o null si no válido)
+function normalizeDate(value) {
+  if (!value) return null;
+  if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+  const d = new Date(value);
+  if (Number.isNaN(d)) return null;
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+}
 
 export default function NewOrderModal({
   open,
   onClose,
-  onCreated,
+  onCreated,   // callback al guardar (create o edit). Si quieres, puedes pasarle el objeto guardado.
   onNotify,
   order = null,
   editMode = false
@@ -36,7 +46,7 @@ export default function NewOrderModal({
   // Guardamos el estado inicial para dirty-check
   const initialFormRef = useRef(form);
 
-  // Normaliza date a yyyy-mm-dd
+  // Normaliza date a yyyy-mm-dd (para precargar el form)
   const normDate = (v) => (v ? String(v).slice(0, 10) : "");
 
   useEffect(() => {
@@ -94,25 +104,26 @@ export default function NewOrderModal({
     setLoading(true);
     setError("");
 
-    const payload = buildOrderPayload(form);
+    // Construimos payload y aseguramos due_date normalizado
+    const base = buildOrderPayload(form);
+    const dueISO = normalizeDate(form.due_date);
+    const payload = {
+      ...base,
+      // si dueISO es null, no mandamos nada (evita pisar con null)
+      ...(dueISO ? { due_date: dueISO } : {})
+    };
 
     try {
+      let saved;
       if (editMode && order) {
-        await fetchJSON(`${API}/orders/${order.code}`, {
-          method: "PATCH",
-          body: JSON.stringify(payload),
-        });
+        saved = await api.updateOrder(order.code, payload);
         onNotify?.(`Pedido editado correctamente${order?.code ? `: ${order.code}` : ""}`, "success");
       } else {
-        // FastAPI devuelve objeto plano: { code, ... }
-        const created = await fetchJSON(`${API}/orders`, {
-          method: "POST",
-          body: JSON.stringify(payload),
-        });
-        onNotify?.(`Pedido creado: ${created.code}`, "success");
+        saved = await api.createOrder(payload); // FastAPI devuelve objeto plano: { code, ... }
+        onNotify?.(`Pedido creado: ${saved.code}`, "success");
       }
 
-      onCreated?.();
+      onCreated?.(saved); // si el padre lo usa, que actualice su estado con "saved"
       onClose?.();
     } catch (err) {
       let msg = "Error de red";
@@ -125,14 +136,12 @@ export default function NewOrderModal({
         msg = err.message;
       }
 
-      // Log detallado en consola para debug
       console.groupCollapsed("[Orders] Error al guardar");
       console.error("Status:", status);
       console.error("Message:", msg);
-      console.error("Payload:", buildOrderPayload(form));
+      console.error("Payload:", payload);
       console.groupEnd();
 
-      // Notificación visible para el usuario
       const pretty = status ? `[${status}] ${msg}` : msg;
       setError(pretty);
       onNotify?.(pretty, "error");
@@ -141,6 +150,7 @@ export default function NewOrderModal({
     }
   }
 
+  
   if (!open) return null;
 
   return (
@@ -218,39 +228,45 @@ export default function NewOrderModal({
             />
           </label>
 
-          <div className="col-span-full flex items-center gap-3">
-            <button
-              disabled={loading || (editMode && !isDirty) || !isValid || isDueInvalid}
-              aria-disabled={loading || (editMode && !isDirty) || !isValid || isDueInvalid}
-              title={
-                !isValid
-                  ? "Completa los campos requeridos"
-                  : editMode && !isDirty
-                  ? "Sin cambios"
-                  : isDueInvalid
-                  ? "La fecha de compromiso no puede ser anterior a hoy"
-                  : ""
-              }
-              type="submit"
-              className="rounded-xl bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-700 disabled:opacity-50"
-            >
-              {editMode ? "Guardar cambios" : "Crear"}
-            </button>
+          <div className="col-span-full flex flex-wrap items-center gap-3 justify-between">
+            
 
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-xl border border-slate-300 px-4 py-2 text-sm hover:bg-slate-50"
-            >
-              Cancelar
-            </button>
+            {/* Botones derecha: guardar/cancelar */}
+            <div className="flex items-center gap-3">
+              <button
+                disabled={loading || (editMode && !isDirty) || !isValid || isDueInvalid}
+                aria-disabled={loading || (editMode && !isDirty) || !isValid || isDueInvalid}
+                title={
+                  !isValid
+                    ? "Completa los campos requeridos"
+                    : editMode && !isDirty
+                    ? "Sin cambios"
+                    : isDueInvalid
+                    ? "La fecha de compromiso no puede ser anterior a hoy"
+                    : ""
+                }
+                type="submit"
+                className="rounded-xl bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-700 disabled:opacity-50"
+              >
+                {editMode ? "Guardar cambios" : "Crear"}
+              </button>
 
-            {loading && <span className="text-sm text-slate-500">Guardando…</span>}
-            {error && <span className="text-sm text-rose-600">{error}</span>}
-            {editMode && !isDirty && (
-              <span className="text-xs text-slate-500">Sin cambios</span>
-            )}
+              <button
+                type="button"
+                onClick={onClose}
+                className="rounded-xl border border-slate-300 px-4 py-2 text-sm hover:bg-slate-50"
+                disabled={loading}
+              >
+                Cancelar
+              </button>
+            </div>
           </div>
+
+          {loading && <span className="text-sm text-slate-500">Procesando…</span>}
+          {error && <span className="text-sm text-rose-600">{error}</span>}
+          {editMode && !isDirty && !loading && (
+            <span className="text-xs text-slate-500">Sin cambios</span>
+          )}
         </form>
       </div>
     </div>
