@@ -13,7 +13,6 @@ import {
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import SortableCard from "./SortableCard";
 import KanbanCard from "./KanbanCard";
-import NewOrderModal from "./NewOrderModal";
 
 const COLUMNS = [
   { key: "recibido",   title: "Recibido" },
@@ -35,7 +34,7 @@ const normalizeStatus = (s = "") =>
   s.toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu, "").replace(/\s+/g, "_");
 
 // Componente de columna (maneja useDroppable)
-function Column({ col, itemIds, getOrderById, onEdit }) {
+function Column({ col, itemIds, getOrderById, onEdit, onDelete }) {
   const { setNodeRef, isOver } = useDroppable({
     id: col.key,
     data: { columnId: col.key },
@@ -52,7 +51,7 @@ function Column({ col, itemIds, getOrderById, onEdit }) {
 
       <div
         ref={setNodeRef}
-        className="kanban-column overflow-y-auto overscroll-contain touch-pan-y ios-smooth px-2 pb-3 max-h=[calc(100vh-220px)] min-h-12"
+        className="kanban-column overflow-y-auto overscroll-contain touch-pan-y ios-smooth px-2 pb-3 max-h-[calc(100vh-220px)] min-h-12"
         style={isOver ? { background: "rgba(148,163,184,0.12)" } : undefined}
       >
         <SortableContext id={col.key} items={itemIds} strategy={verticalListSortingStrategy}>
@@ -69,10 +68,11 @@ function Column({ col, itemIds, getOrderById, onEdit }) {
                   <KanbanCard
                     order={order}
                     attributes={attributes}
-                    listeners={listeners}
                     setNodeRef={setNodeRef}
                     style={style}
                     onEdit={onEdit}
+                    onDelete={onDelete}
+                    dragListeners={listeners}  // drag solo en el “grip” dentro de la card
                   />
                 )}
               />
@@ -84,7 +84,7 @@ function Column({ col, itemIds, getOrderById, onEdit }) {
   );
 }
 
-export default function Kanban({ orders = [], onChangeStatus }) {
+export default function Kanban({ orders = [], onChangeStatus, onEditOrder, onDelete }) {
   const toId = (v) => String(v);
   const getOrderById = (id) => orders.find((o) => toId(o.code) === toId(id));
 
@@ -108,12 +108,6 @@ export default function Kanban({ orders = [], onChangeStatus }) {
   const mouseSensor = useSensor(MouseSensor, { activationConstraint: { distance: 6 } });
   const touchSensor = useSensor(TouchSensor, { activationConstraint: { delay: 180, tolerance: 6 } });
   const sensors = useSensors(mouseSensor, touchSensor);
-
-  // Modal
-  const [selectedOrder, setSelectedOrder] = useState(null);
-  const [modalOpen, setModalOpen] = useState(false);
-  const handleEdit = (order) => { setSelectedOrder(order); setModalOpen(true); };
-  const closeModal = () => { setModalOpen(false); setSelectedOrder(null); };
 
   // Overlay
   const [activeId, setActiveId] = useState(null);
@@ -192,7 +186,8 @@ export default function Kanban({ orders = [], onChangeStatus }) {
             col={col}
             itemIds={columns[col.key] || []}
             getOrderById={getOrderById}
-            onEdit={handleEdit}
+            onEdit={onEditOrder}  // abre modal en el padre
+            onDelete={onDelete}
           />
         ))}
       </div>
@@ -210,16 +205,8 @@ export default function Kanban({ orders = [], onChangeStatus }) {
           </div>
         ) : null}
       </DragOverlay>
-
-      <NewOrderModal
-        open={modalOpen}
-        onClose={closeModal}
-        editMode={true}
-        order={selectedOrder}
-        onCreated={closeModal}
-        onNotify={(msg, type) => console.log(`[${type}]`, msg)}
-      />
     </DndContext>
   );
 }
+
 
