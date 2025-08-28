@@ -11,8 +11,9 @@ import {
   useDroppable,
 } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
-import SortableCard from "./SortableCard";
-import KanbanCard from "./KanbanCard";
+import Column from "./Column";
+import KanbanDragOverlay from "./KanbanDragOverlay";
+import { normalizeStatus, toId, findContainerOf, groupOrdersByStatus } from "./kanbanHelpers";
 
 const COLUMNS = [
   { key: "recibido",   title: "Recibido" },
@@ -30,62 +31,9 @@ const BACKEND_STATUS = {
   cancelado: "cancelado",
 };
 
-const normalizeStatus = (s = "") =>
-  s.toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu, "").replace(/\s+/g, "_");
 
-// Componente de columna (maneja useDroppable)
-function Column({ col, itemIds, getOrderById, onEdit, onDelete }) {
-  const { setNodeRef, isOver } = useDroppable({
-    id: col.key,
-    data: { columnId: col.key },
-  });
-
-  return (
-    <div className="bg-slate-50 rounded-xl border border-slate-200">
-      <header className="px-3 py-2 text-md font-bold text-slate-700 flex items-center justify-between">
-        <span>{col.title}</span>
-        <span className="ml-2 mr-1 inline-flex items-center justify-center rounded-full bg-slate-200 text-slate-700 text-sm font-semibold px-2 py-0.5 min-w-[1.5rem]">
-          {itemIds.length}
-        </span>
-      </header>
-
-      <div
-        ref={setNodeRef}
-        className="kanban-column overflow-y-auto overscroll-contain touch-pan-y ios-smooth px-2 pb-3 max-h-[calc(100vh-220px)] min-h-12"
-        style={isOver ? { background: "rgba(148,163,184,0.12)" } : undefined}
-      >
-        <SortableContext id={col.key} items={itemIds} strategy={verticalListSortingStrategy}>
-          {itemIds.map((id) => {
-            const order = getOrderById(id);
-            if (!order) return null;
-            return (
-              <SortableCard
-                key={id}
-                id={id}
-                order={order}
-                onEdit={onEdit}
-                render={({ order, attributes, listeners, setNodeRef, style, onEdit }) => (
-                  <KanbanCard
-                    order={order}
-                    attributes={attributes}
-                    setNodeRef={setNodeRef}
-                    style={style}
-                    onEdit={onEdit}
-                    onDelete={onDelete}
-                    dragListeners={listeners}  // drag solo en el “grip” dentro de la card
-                  />
-                )}
-              />
-            );
-          })}
-        </SortableContext>
-      </div>
-    </div>
-  );
-}
 
 export default function Kanban({ orders = [], onChangeStatus, onEditOrder, onDelete }) {
-  const toId = (v) => String(v);
   const getOrderById = (id) => orders.find((o) => toId(o.code) === toId(id));
 
   // Estado por columnas
@@ -95,13 +43,7 @@ export default function Kanban({ orders = [], onChangeStatus, onEditOrder, onDel
 
   // Sincroniza con pedidos del backend
   useEffect(() => {
-    const grouped = Object.fromEntries(COLUMNS.map((c) => [c.key, []]));
-    for (const o of orders) {
-      const id = toId(o.code);
-      const key = normalizeStatus(o.status);
-      if (grouped[key]) grouped[key].push(id);
-    }
-    setColumns(grouped);
+    setColumns(groupOrdersByStatus(orders, COLUMNS));
   }, [orders]);
 
   // Sensores
@@ -113,13 +55,6 @@ export default function Kanban({ orders = [], onChangeStatus, onEditOrder, onDel
   const [activeId, setActiveId] = useState(null);
   const activeOrder = orders.find((o) => toId(o.code) === toId(activeId)) || null;
 
-  const findContainerOf = (id, state) => {
-    for (const key of Object.keys(state)) {
-      if ((state[key] || []).includes(id)) return key;
-    }
-    if (state[id]) return id;
-    return null;
-  };
 
   function handleDragStart(e) {
     setActiveId(e.active.id);
@@ -193,17 +128,7 @@ export default function Kanban({ orders = [], onChangeStatus, onEditOrder, onDel
       </div>
 
       <DragOverlay dropAnimation={null}>
-        {activeOrder ? (
-          <div className="rounded-xl border border-slate-200 bg-white p-3 shadow">
-            <div className="text-sm font-semibold text-slate-800">
-              {activeOrder.title || activeOrder.client_name}{" "}
-              <span className="text-slate-400">({activeOrder.code})</span>
-            </div>
-            <div className="mt-0.5 text-xs text-slate-500">
-              {activeOrder.client_name} · {activeOrder.delivery_method}
-            </div>
-          </div>
-        ) : null}
+        <KanbanDragOverlay activeOrder={activeOrder} />
       </DragOverlay>
     </DndContext>
   );
