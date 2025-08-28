@@ -1,0 +1,13 @@
+{
+  "files.exclude": {
+    "**/.git": true,
+    "**/.env": true,
+    "**/.DS_Store": true,
+    "**/__pycache__": true,
+    "**/.vscode": true,
+    "**/__init__.py": true,
+    "**/node_modules": true,  
+     "**/.venv": true,  
+  }
+}
+    

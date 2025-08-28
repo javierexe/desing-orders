@@ -66,14 +66,16 @@ export default function NewOrderModal({
         client_name: "",
         title: "",
         delivery_method: "retiro",
-        // pre-carga con hoy para evitar fechas pasadas por accidente
         due_date: todayISO(),
         description: ""
       };
       setForm(blank);
       initialFormRef.current = blank;
     }
-  }, [open, editMode, order]);
+    // Solo actualiza el ref si el pedido a editar cambia realmente
+    // Esto evita que el dirty-check se rompa por renders innecesarios
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, editMode, order?.code]);
 
   const isDirty = useMemo(
     () => JSON.stringify(form) !== JSON.stringify(initialFormRef.current),
@@ -228,8 +230,27 @@ export default function NewOrderModal({
             />
           </label>
 
+<<<<<<< HEAD
           <div className="col-span-full flex flex-wrap items-center gap-3 justify-between">
             
+=======
+          <div className="col-span-full flex items-center gap-3">
+            <button
+              disabled={loading || (editMode && !isDirty) || !isValid}
+              aria-disabled={loading || (editMode && !isDirty) || !isValid}
+              title={
+                !isValid
+                  ? "Completa los campos requeridos"
+                  : editMode && !isDirty
+                  ? "Sin cambios"
+                  : ""
+              }
+              type="submit"
+              className="rounded-xl bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-700 disabled:opacity-50"
+            >
+              {editMode ? "Guardar cambios" : "Crear"}
+            </button>
+>>>>>>> main
 
             {/* Botones derecha: guardar/cancelar */}
             <div className="flex items-center gap-3">
@@ -251,6 +272,7 @@ export default function NewOrderModal({
                 {editMode ? "Guardar cambios" : "Crear"}
               </button>
 
+<<<<<<< HEAD
               <button
                 type="button"
                 onClick={onClose}
@@ -260,6 +282,16 @@ export default function NewOrderModal({
                 Cancelar
               </button>
             </div>
+=======
+            {loading && <span className="text-sm text-slate-500">Guardando…</span>}
+            {error && <span className="text-sm text-rose-600">{error}</span>}
+            {isDueInvalid && (
+              <span className="text-xs text-amber-600">Advertencia: la fecha de compromiso es anterior a hoy.</span>
+            )}
+            {editMode && !isDirty && (
+              <span className="text-xs text-slate-500">Sin cambios</span>
+            )}
+>>>>>>> main
           </div>
 
           {loading && <span className="text-sm text-slate-500">Procesando…</span>}
