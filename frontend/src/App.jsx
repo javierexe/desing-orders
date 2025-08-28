@@ -168,6 +168,7 @@ function AppInner() {
                 <NewOrderModal
                   open={showEdit}
                   order={orderToEdit}
+                  editMode={true}
                   onClose={() => { setShowEdit(false); setOrderToEdit(null); }}
                   onUpdated={fetchOrders}
                 />
