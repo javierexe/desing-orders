@@ -118,13 +118,21 @@ const KanbanCard = React.memo(function KanbanCard({
           <div className="mt-0.5 text-xs text-slate-500">{order.client_name}</div>
 
           <div className="mt-2 flex flex-wrap items-center gap-2 justify-between mr-8">
-            {order.due_date && (
+            {order.due_date ? (
               <span
                 className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs ring-1 ${dueClass}`}
                 title={`Fecha: ${order.due_date}`}
               >
                 <Calendar className="h-3.5 w-3.5" />
                 <span>Entrega: {remainingLabel}</span>
+              </span>
+            ) : (
+              <span
+                className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs ring-1 ring-slate-200 bg-slate-50 text-slate-500"
+                title="Sin fecha de entrega"
+              >
+                <Calendar className="h-3.5 w-3.5" />
+                <span>Entrega: sin fecha</span>
               </span>
             )}
 
