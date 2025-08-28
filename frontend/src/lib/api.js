@@ -3,9 +3,14 @@ const DEV = import.meta.env.DEV;
 const API_BASE = (DEV ? "/api" : import.meta.env.VITE_API_BASE_URL) || "/api";
 
 async function http(path, options = {}) {
+  // Si el método es GET, no agregues Content-Type para evitar preflight CORS
+  const method = options.method ? options.method.toUpperCase() : "GET";
+  const headers = method === "GET"
+    ? { ...(options.headers || {}) }
+    : { "Content-Type": "application/json", ...(options.headers || {}) };
   const res = await fetch(`${API_BASE}${path}`, {
     ...options,
-    headers: { "Content-Type": "application/json", ...(options.headers || {}) },
+    headers,
   });
 
   if (!res.ok) {

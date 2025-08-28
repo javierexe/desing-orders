@@ -34,6 +34,7 @@ function AppInner() {
 
   // STATE
   const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [showNew, setShowNew] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
   const [query, setQuery] = useState("");
@@ -45,8 +46,13 @@ function AppInner() {
   // DATA
   useEffect(() => { fetchOrders(); }, []);
   async function fetchOrders() {
-    const data = await api.listOrders();
-    setOrders(data);
+    setLoading(true);
+    try {
+      const data = await api.listOrders();
+      setOrders(data);
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function handleChangeStatus(code, status) {
@@ -100,94 +106,91 @@ function AppInner() {
           {toast.msg}
         </div>
       )}
-
-      <Routes>
-        {/* Redirección raíz a Pedidos */}
-        <Route path="/" element={<Navigate to="/pedidos" replace />} />
-
-        <Route
-          path="/dashboard"
-          element={
-            <Layout title="Dashboard">
-              <Dashboard kpis={kpis} orders={orders} />
-            </Layout>
-          }
-        />
-
-        <Route
-          path="/pedidos"
-          element={
-            <Layout
-              title="Pedidos"
-              right={
-                <button
-                  onClick={() => { setShowNew(true); setShowEdit(false); }}
-                  className="rounded-xl bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-700"
-                >
-                  + Nuevo pedido
-                </button>
-              }
-            >
-              {/* Barra de búsqueda */}
-              <div className="mb-4 flex items-center gap-2">
-                <input
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Buscar por código, cliente o título…"
-                  className="w-full max-w-md rounded-2xl border border-slate-300 bg-white px-4 py-2 outline-none focus:ring-2 focus:ring-sky-400"
-                />
-                {query && (
+      {loading ? (
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-sky-500"></div>
+        </div>
+      ) : (
+        <Routes>
+          {/* Redirección raíz a Pedidos */}
+          <Route path="/" element={<Navigate to="/pedidos" replace />} />
+          <Route
+            path="/dashboard"
+            element={
+              <Layout title="Dashboard">
+                <Dashboard kpis={kpis} orders={orders} />
+              </Layout>
+            }
+          />
+          <Route
+            path="/pedidos"
+            element={
+              <Layout
+                title="Pedidos"
+                right={
                   <button
-                    onClick={() => setQuery("")}
-                    className="rounded-xl border border-slate-300 px-3 py-2 text-sm hover:bg-slate-50"
+                    onClick={() => { setShowNew(true); setShowEdit(false); }}
+                    className="rounded-xl bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-700"
                   >
-                    Limpiar
+                    + Nuevo pedido
                   </button>
-                )}
-              </div>
-
-              {/* Kanban */}
-              <section className="mt-0">
-                <Kanban
-                  orders={filtered}
-                  onChangeStatus={handleChangeStatus}
-                  onEditOrder={(order) => { setOrderToEdit(order); setShowEdit(true); }}
-                  onDelete={handleDelete}
+                }
+              >
+                {/* Barra de búsqueda */}
+                <div className="mb-4 flex items-center gap-2">
+                  <input
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder="Buscar por código, cliente o título…"
+                    className="w-full max-w-md rounded-2xl border border-slate-300 bg-white px-4 py-2 outline-none focus:ring-2 focus:ring-sky-400"
+                  />
+                  {query && (
+                    <button
+                      onClick={() => setQuery("")}
+                      className="rounded-xl border border-slate-300 px-3 py-2 text-sm hover:bg-slate-50"
+                    >
+                      Limpiar
+                    </button>
+                  )}
+                </div>
+                {/* Kanban */}
+                <section className="mt-0">
+                  <Kanban
+                    orders={filtered}
+                    onChangeStatus={handleChangeStatus}
+                    onEditOrder={(order) => { setOrderToEdit(order); setShowEdit(true); }}
+                    onDelete={handleDelete}
+                  />
+                </section>
+                {/* Modales: crear y editar */}
+                <NewOrderModal
+                  open={showNew}
+                  onClose={() => setShowNew(false)}
+                  onCreated={fetchOrders}
                 />
-
-              </section>
-
-              {/* Modales: crear y editar */}
-              <NewOrderModal
-                open={showNew}
-                onClose={() => setShowNew(false)}
-                onCreated={fetchOrders}
-                onNotify={showToast}
-              />
-              <NewOrderModal
-                open={showEdit}
-                onClose={() => { setShowEdit(false); setOrderToEdit(null); }}
-                onCreated={fetchOrders}
-                order={orderToEdit}
-                editMode={true}
-                onNotify={showToast}
-              />
-            </Layout>
-          }
-        />
-
-        {/* Fallback 404 → Pedidos */}
-        <Route path="*" element={<Navigate to="/pedidos" replace />} />
-      </Routes>
-    </>
-  );
-}
-
-export default function App() {
-  return (
-    <BrowserRouter>
-      <AppInner />
-    </BrowserRouter>
-  );
-}
-
+                {showEdit && (
+                  <NewOrderModal
+                    open={showEdit}
+                    order={orderToEdit}
+                    onClose={() => { setShowEdit(false); setOrderToEdit(null); }}
+                    onUpdated={fetchOrders}
+                  />
+                )}
+              </Layout>
+            }
+          />
+        </Routes>
+            )}
+          </>
+        );
+      }
+      
+      function App() {
+        return (
+          <BrowserRouter>
+            <AppInner />
+          </BrowserRouter>
+        );
+      }
+      
+      export default App;
