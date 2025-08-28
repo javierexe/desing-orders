@@ -184,7 +184,7 @@ export default function NewOrderModal({
           </label>
 
           <label className="text-sm">
-            Título
+            Proyecto
             <input
               required
               value={form.title}
@@ -230,10 +230,7 @@ export default function NewOrderModal({
             />
           </label>
 
-<<<<<<< HEAD
-          <div className="col-span-full flex flex-wrap items-center gap-3 justify-between">
-            
-=======
+
           <div className="col-span-full flex items-center gap-3">
             <button
               disabled={loading || (editMode && !isDirty) || !isValid}
@@ -250,39 +247,14 @@ export default function NewOrderModal({
             >
               {editMode ? "Guardar cambios" : "Crear"}
             </button>
->>>>>>> main
-
-            {/* Botones derecha: guardar/cancelar */}
-            <div className="flex items-center gap-3">
-              <button
-                disabled={loading || (editMode && !isDirty) || !isValid || isDueInvalid}
-                aria-disabled={loading || (editMode && !isDirty) || !isValid || isDueInvalid}
-                title={
-                  !isValid
-                    ? "Completa los campos requeridos"
-                    : editMode && !isDirty
-                    ? "Sin cambios"
-                    : isDueInvalid
-                    ? "La fecha de compromiso no puede ser anterior a hoy"
-                    : ""
-                }
-                type="submit"
-                className="rounded-xl bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-700 disabled:opacity-50"
-              >
-                {editMode ? "Guardar cambios" : "Crear"}
-              </button>
-
-<<<<<<< HEAD
-              <button
-                type="button"
-                onClick={onClose}
-                className="rounded-xl border border-slate-300 px-4 py-2 text-sm hover:bg-slate-50"
-                disabled={loading}
-              >
-                Cancelar
-              </button>
-            </div>
-=======
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-xl border border-slate-300 px-4 py-2 text-sm hover:bg-slate-50"
+              disabled={loading}
+            >
+              Cancelar
+            </button>
             {loading && <span className="text-sm text-slate-500">Guardando…</span>}
             {error && <span className="text-sm text-rose-600">{error}</span>}
             {isDueInvalid && (
@@ -291,7 +263,6 @@ export default function NewOrderModal({
             {editMode && !isDirty && (
               <span className="text-xs text-slate-500">Sin cambios</span>
             )}
->>>>>>> main
           </div>
 
           {loading && <span className="text-sm text-slate-500">Procesando…</span>}
