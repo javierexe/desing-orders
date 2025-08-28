@@ -18,4 +18,4 @@ dist/
 .idea/
 
 # --- OS ---
-.DS_Store
+*.DS_Store
