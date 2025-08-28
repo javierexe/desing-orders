@@ -35,15 +35,16 @@ export default function Column({ col, itemIds, getOrderById, onEdit, onDelete })
                 id={id}
                 order={order}
                 onEdit={onEdit}
-                render={({ order, attributes, listeners, setNodeRef, style, onEdit }) => (
+                render={({ order, attributes, listeners, setNodeRef, setActivatorNodeRef, style, onEdit }) => (
                   <KanbanCard
                     order={order}
                     attributes={attributes}
+                    listeners={listeners}
                     setNodeRef={setNodeRef}
+                    setActivatorNodeRef={setActivatorNodeRef}
                     style={style}
                     onEdit={onEdit}
                     onDelete={onDelete}
-                    dragListeners={listeners}
                   />
                 )}
               />

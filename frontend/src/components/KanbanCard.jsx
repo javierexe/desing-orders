@@ -8,6 +8,7 @@ const KanbanCard = React.memo(function KanbanCard({
   attributes,
   listeners,
   setNodeRef,
+  setActivatorNodeRef,
   style,
   onEdit,
   onDelete,
@@ -99,6 +100,7 @@ const KanbanCard = React.memo(function KanbanCard({
           type="button"
           aria-label="Arrastrar"
           className="inline-flex h-9 w-9 md:h-8 md:w-8 items-center justify-center rounded-full hover:bg-slate-100 active:bg-slate-200 cursor-grab touch-none"
+          ref={setActivatorNodeRef}
           {...(listeners || {})}
           {...(attributes || {})}
         >

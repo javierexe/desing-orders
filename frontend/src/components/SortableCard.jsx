@@ -7,10 +7,8 @@ function SortableCard({ id, order, onEdit, render }) {
 
   const style = { transform: CSS.Transform.toString(transform), transition };
 
-  return render?.({ order, attributes, listeners, setNodeRef, setActivatorNodeRef, style: { transform: CSS.Transform.toString(transform), transition }, onEdit });
-
   if (typeof render === "function") {
-    return render({ order, attributes, listeners, setNodeRef, style, onEdit });
+    return render({ order, attributes, listeners, setNodeRef, setActivatorNodeRef, style, onEdit });
   }
 
   // Fallback mínimo (sin listeners en la tarjeta completa)
