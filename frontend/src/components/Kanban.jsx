@@ -7,6 +7,7 @@ const BACKEND_STATUS = {
 };
 // frontend/src/components/Kanban.jsx
 import React, { useState, useEffect } from "react";
+import LogoSpinner from "./LogoSpinner";
 import {
   DndContext,
   MouseSensor,
@@ -30,7 +31,7 @@ const COLUMNS = [
   { key: "cancelado",  title: "Cancelado" },
 ];
 
-export default function Kanban({ orders = [], onChangeStatus, onEditOrder, onDelete }) {
+export default function Kanban({ orders = [], loading = false, onChangeStatus, onEditOrder, onDelete }) {
   const getOrderById = (id) => orders.find((o) => toId(o.code) === toId(id));
   const [columns, setColumns] = useState(() =>
     Object.fromEntries(COLUMNS.map((c) => [c.key, []]))
@@ -60,16 +61,22 @@ export default function Kanban({ orders = [], onChangeStatus, onEditOrder, onDel
       onDragEnd={handleDragEnd}
     >
       <div className="grid gap-3 p-3 [grid-template-columns:repeat(auto-fill,minmax(300px,1fr))]">
-        {COLUMNS.map((col) => (
-          <Column
-            key={col.key}
-            col={col}
-            itemIds={columns[col.key] || []}
-            getOrderById={getOrderById}
-            onEdit={onEditOrder}
-            onDelete={onDelete}
-          />
-        ))}
+        {loading ? (
+          <div className="col-span-full flex flex-col items-center justify-center min-h-[40vh] gap-3">
+            <LogoSpinner size={96} color="#e10600" text="Cargando pedidos..." />
+          </div>
+        ) : (
+          COLUMNS.map((col) => (
+            <Column
+              key={col.key}
+              col={col}
+              itemIds={columns[col.key] || []}
+              getOrderById={getOrderById}
+              onEdit={onEditOrder}
+              onDelete={onDelete}
+            />
+          ))
+        )}
       </div>
       <DragOverlay dropAnimation={null}>
         <KanbanDragOverlay activeOrder={activeOrder} />
