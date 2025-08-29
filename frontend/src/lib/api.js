@@ -8,10 +8,15 @@ async function http(path, options = {}) {
   const headers = method === "GET"
     ? { ...(options.headers || {}) }
     : { "Content-Type": "application/json", ...(options.headers || {}) };
-  const res = await fetch(`${API_BASE}${path}`, {
+    
+  const url = `${API_BASE}${path}`;
+  
+  
+  const res = await fetch(url, {
     ...options,
     headers,
   });
+
 
   if (!res.ok) {
     let msg = `HTTP ${res.status}`;
@@ -32,6 +37,7 @@ export const api = {
   listOrders() { return http("/orders"); },
   createOrder(order) { return http("/orders", { method: "POST", body: JSON.stringify(order) }); },
   updateOrder(code, patch) {
+    
     return http(`/orders/${encodeURIComponent(code)}`, { method: "PATCH", body: JSON.stringify(patch) });
   },
   deleteOrder(code) { return http(`/orders/${encodeURIComponent(code)}`, { method: "DELETE" }); },

@@ -4,6 +4,11 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 from .db import SessionLocal
 from . import models, schemas
+import logging
+
+# Configurar logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 app = FastAPI()
 
@@ -49,27 +54,32 @@ def create_order(payload: schemas.OrderCreate, db: Session = Depends(get_db)):
 
 @app.patch("/orders/{code}", response_model=schemas.OrderOut)
 def update_order(
-    code: str, 
+    code: str,
     payload: schemas.OrderUpdate = Body(None),
-    status: Optional[str] = None,
     db: Session = Depends(get_db)
 ):
+    logger.info("="*50)
+    logger.info(f"PATCH REQUEST RECEIVED FOR: {code}")
+    
     order = db.query(models.Order).filter(models.Order.code == code).first()
     if not order:
         raise HTTPException(status_code=404, detail="Pedido no encontrado")
     
-    data = payload.model_dump(exclude_unset=True) if payload else {}
-    if status is not None:
-        data["status"] = status
-
+        data = payload.model_dump(exclude_unset=True) if payload else {}    
+        logger.info(f"[PATCH /orders/{code}] Nuevo estado: {data.get('status', order.status)}")
+    
     if not data:
         return order
-
+        
     for field, value in data.items():
         setattr(order, field, value)
-
+        
     db.commit()
+    logger.info("DATABASE COMMITTED!")
+    
     db.refresh(order)
+    logger.info(f"[PATCH /orders/{code}] Estado final: {order.status}")
+    logger.info("="*50)
     return order
 
 

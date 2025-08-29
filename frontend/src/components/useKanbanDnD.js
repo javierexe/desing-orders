@@ -10,6 +10,9 @@ import {
 import { findContainerOf } from "./kanbanHelpers";
 
 export function useKanbanDnD(columns, setColumns, getOrderById, onChangeStatus, backendStatus) {
+  // Estado para guardar las columnas originales al iniciar el drag
+  const [originalColumns, setOriginalColumns] = useState(null);
+  
   const mouseSensor = useSensor(MouseSensor, { activationConstraint: { distance: 6 } });
   const touchSensor = useSensor(TouchSensor, { activationConstraint: { delay: 180, tolerance: 6 } });
   const sensors = useSensors(mouseSensor, touchSensor);
@@ -17,10 +20,12 @@ export function useKanbanDnD(columns, setColumns, getOrderById, onChangeStatus, 
   const [activeId, setActiveId] = useState(null);
 
   function handleDragStart(e) {
-    setActiveId(e.active.id);
+  setOriginalColumns({ ...columns });
+  setActiveId(e.active.id);
   }
 
   function handleDragOver(e) {
+    
     const { active, over } = e;
     if (!over) return;
     const aId = String(active.id);
@@ -43,18 +48,36 @@ export function useKanbanDnD(columns, setColumns, getOrderById, onChangeStatus, 
   }
 
   function handleDragEnd(e) {
+    
     const { active, over } = e;
     setActiveId(null);
     if (!over) return;
     const aId = String(active.id);
     const oId = String(over.id);
-    const from = findContainerOf(aId, columns);
-    const to = findContainerOf(oId, columns) || oId;
-    if (!from || !to) return;
-    if (from !== to) {
+    const from = originalColumns ? findContainerOf(aId, originalColumns) : findContainerOf(aId, columns);
+    let to = null;
+    if (columns[oId]) {
+      to = oId;
+    } else {
+      to = findContainerOf(oId, columns);
+    }
+    if (from && to && from !== to) {
       const moved = getOrderById(aId);
       if (moved && onChangeStatus) {
         onChangeStatus(moved.code, backendStatus[to] || to);
+      }
+    }
+    // Eliminar cualquier alert residual
+    
+    if (!from || !to) return;
+    if (from !== to) {
+      const moved = getOrderById(aId);
+      
+      if (moved && onChangeStatus) {
+        onChangeStatus(moved.code, backendStatus[to] || to);
+        
+      } else {
+        
       }
     }
   }

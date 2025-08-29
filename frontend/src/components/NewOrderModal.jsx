@@ -28,7 +28,8 @@ function normalizeDate(value) {
 export default function NewOrderModal({
   open,
   onClose,
-  onCreated,   // callback al guardar (create o edit). Si quieres, puedes pasarle el objeto guardado.
+  onCreated,   // callback al guardar (crear)
+  onUpdated,   // callback al guardar (editar)
   onNotify,
   order = null,
   editMode = false
@@ -38,7 +39,8 @@ export default function NewOrderModal({
     title: "",
     delivery_method: "retiro",
     due_date: "",
-    description: ""
+    description: "",
+    status: "recibido"
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -57,7 +59,8 @@ export default function NewOrderModal({
         title: order.title ?? "",
         delivery_method: order.delivery_method ?? "retiro",
         due_date: normDate(order.due_date),
-        description: order.description ?? ""
+        description: order.description ?? "",
+        status: order.status ?? "recibido"
       };
       setForm(next);
       initialFormRef.current = next;
@@ -67,7 +70,8 @@ export default function NewOrderModal({
         title: "",
         delivery_method: "retiro",
         due_date: todayISO(),
-        description: ""
+        description: "",
+        status: "recibido"
       };
       setForm(blank);
       initialFormRef.current = blank;
@@ -106,13 +110,18 @@ export default function NewOrderModal({
     setLoading(true);
     setError("");
 
+    // Normaliza el status para que siempre sea el esperado
+    function normalizeStatus(s = "") {
+      return s.replace(/\s+/g, "_").toLowerCase();
+    }
     // Construimos payload y aseguramos due_date normalizado
     const base = buildOrderPayload(form);
     const dueISO = normalizeDate(form.due_date);
     const payload = {
       ...base,
       // si dueISO es null, no mandamos nada (evita pisar con null)
-      ...(dueISO ? { due_date: dueISO } : {})
+      ...(dueISO ? { due_date: dueISO } : {}),
+      status: normalizeStatus(form.status || "recibido")
     };
 
     try {
@@ -120,12 +129,12 @@ export default function NewOrderModal({
       if (editMode && order) {
         saved = await api.updateOrder(order.code, payload);
         onNotify?.(`Pedido editado correctamente${order?.code ? `: ${order.code}` : ""}`, "success");
+        onUpdated?.(saved);
       } else {
         saved = await api.createOrder(payload); // FastAPI devuelve objeto plano: { code, ... }
         onNotify?.(`Pedido creado: ${saved.code}`, "success");
+        onCreated?.(saved);
       }
-
-      onCreated?.(saved); // si el padre lo usa, que actualice su estado con "saved"
       onClose?.();
     } catch (err) {
       let msg = "Error de red";

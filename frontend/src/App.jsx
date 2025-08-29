@@ -56,12 +56,18 @@ function AppInner() {
   }
 
   async function handleChangeStatus(code, status) {
+       
     // actualización optimista
     setOrders(prev => prev.map(o => o.code === code ? { ...o, status } : o));
+    
     try {
-      await api.updateStatus(code, status);
+      // Enviar el cambio de estado como PATCH con el campo correcto
+      const result = await api.updateOrder(code, { status });
+      
+      await fetchOrders(); // refresca la lista desde el backend
+      
     } catch (err) {
-      console.error(err);
+      console.error("❌ Error en handleChangeStatus:", err);
       await fetchOrders();
       showToast("No se pudo actualizar el estado", "error");
     }

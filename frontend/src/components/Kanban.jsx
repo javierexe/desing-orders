@@ -1,6 +1,6 @@
 const BACKEND_STATUS = {
   recibido: "recibido",
-  en_proceso: "en proceso",
+  en_proceso: "en_proceso", // Cambiado para que coincida con frontend
   listo: "listo",
   entregado: "entregado",
   cancelado: "cancelado",
@@ -39,6 +39,7 @@ export default function Kanban({ orders = [], loading = false, onChangeStatus, o
   useEffect(() => {
     setColumns(groupOrdersByStatus(orders, COLUMNS));
   }, [orders]);
+
 
   // Hook personalizado para drag & drop
   const {

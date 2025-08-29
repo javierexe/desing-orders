@@ -7,6 +7,7 @@ function SortableCard({ id, order, onEdit, render }) {
 
   const style = { transform: CSS.Transform.toString(transform), transition };
 
+
   if (typeof render === "function") {
     return render({ order, attributes, listeners, setNodeRef, setActivatorNodeRef, style, onEdit });
   }
