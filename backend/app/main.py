@@ -58,28 +58,23 @@ def update_order(
     payload: schemas.OrderUpdate = Body(None),
     db: Session = Depends(get_db)
 ):
-    logger.info("="*50)
-    logger.info(f"PATCH REQUEST RECEIVED FOR: {code}")
-    
+    # Log de inicio de PATCH
+    logger.info(f"[PATCH /orders/{code}] Nuevo estado: {payload.status if payload else order.status}")
     order = db.query(models.Order).filter(models.Order.code == code).first()
     if not order:
         raise HTTPException(status_code=404, detail="Pedido no encontrado")
-    
-        data = payload.model_dump(exclude_unset=True) if payload else {}    
-        logger.info(f"[PATCH /orders/{code}] Nuevo estado: {data.get('status', order.status)}")
-    
+
+    data = payload.model_dump(exclude_unset=True) if payload else {}
+
     if not data:
         return order
-        
+
     for field, value in data.items():
         setattr(order, field, value)
-        
+
     db.commit()
-    logger.info("DATABASE COMMITTED!")
-    
+
     db.refresh(order)
-    logger.info(f"[PATCH /orders/{code}] Estado final: {order.status}")
-    logger.info("="*50)
     return order
 
 
