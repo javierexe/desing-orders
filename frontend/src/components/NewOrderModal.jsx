@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from "react";
+import OrderItemsEditor from "./OrderItemsEditor";
 import { buildOrderPayload, HttpError } from "../utils/http";
 import { api } from "../lib/api";
 
@@ -42,6 +43,7 @@ export default function NewOrderModal({
     description: "",
     status: "recibido"
   });
+  const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -64,6 +66,7 @@ export default function NewOrderModal({
       };
       setForm(next);
       initialFormRef.current = next;
+      setItems(order.items ?? []);
     } else {
       const blank = {
         client_name: "",
@@ -75,6 +78,7 @@ export default function NewOrderModal({
       };
       setForm(blank);
       initialFormRef.current = blank;
+      setItems([]);
     }
     // Solo actualiza el ref si el pedido a editar cambia realmente
     // Esto evita que el dirty-check se rompa por renders innecesarios
@@ -119,9 +123,13 @@ export default function NewOrderModal({
     const dueISO = normalizeDate(form.due_date);
     const payload = {
       ...base,
-      // si dueISO es null, no mandamos nada (evita pisar con null)
       ...(dueISO ? { due_date: dueISO } : {}),
-      status: normalizeStatus(form.status || "recibido")
+      status: normalizeStatus(form.status || "recibido"),
+      items: items.map(item => ({
+        description: item.description,
+        due_date: normalizeDate(item.due_date),
+        quantity: Number(item.quantity) || 1
+      }))
     };
 
     try {
@@ -179,7 +187,7 @@ export default function NewOrderModal({
           )}
         </div>
 
-        <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+  <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {/* 1a fila */}
           <label className="text-sm">
             Proyecto
@@ -229,7 +237,19 @@ export default function NewOrderModal({
             />
           </label>
 
-          {/* Descripción a todo el ancho */}
+          {/* Ítems del pedido */}
+          <div className="col-span-full">
+            <OrderItemsEditor
+              items={items}
+              handleAdd={() => setItems([...items, { description: "", quantity: 1, due_date: "" }])}
+              handleDelete={idx => setItems(items.filter((_, i) => i !== idx))}
+              handleChange={(idx, field, value) => {
+                setItems(items => items.map((item, i) => i === idx ? { ...item, [field]: value } : item));
+              }}
+            />
+          </div>
+
+          {/* Descripción al final */}
           <label className="col-span-full text-sm">
             Descripción
             <textarea
@@ -240,6 +260,8 @@ export default function NewOrderModal({
               placeholder="Notas del pedido…"
             />
           </label>
+
+         
 
 
           <div className="col-span-full flex items-center gap-3">
@@ -256,7 +278,7 @@ export default function NewOrderModal({
               type="submit"
               className="rounded-xl bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-700 disabled:opacity-50"
             >
-              {editMode ? "Guardar cambios" : "Crear"}
+              {editMode ? "Guardar cambios" : "Crear pedido"}
             </button>
             <button
               type="button"
