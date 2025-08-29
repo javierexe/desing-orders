@@ -182,6 +182,17 @@ export default function NewOrderModal({
         <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {/* 1a fila */}
           <label className="text-sm">
+            Proyecto
+            <input
+              required
+              value={form.title}
+              onChange={(e) => setForm({ ...form, title: e.target.value })}
+              className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 outline-none focus:ring-2 focus:ring-sky-400"
+              placeholder="Catálogo 2025"
+            />
+          </label>
+          
+          <label className="text-sm">
             Cliente
             <input
               required
@@ -192,16 +203,7 @@ export default function NewOrderModal({
             />
           </label>
 
-          <label className="text-sm">
-            Proyecto
-            <input
-              required
-              value={form.title}
-              onChange={(e) => setForm({ ...form, title: e.target.value })}
-              className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 outline-none focus:ring-2 focus:ring-sky-400"
-              placeholder="Catálogo 2025"
-            />
-          </label>
+          
 
           {/* 2a fila */}
           <label className="text-sm">
