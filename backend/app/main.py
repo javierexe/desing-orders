@@ -64,19 +64,19 @@ def update_order(
     order = db.query(models.Order).filter(models.Order.code == code).first()
     if not order:
         raise HTTPException(status_code=404, detail="Pedido no encontrado")
-    
-        data = payload.model_dump(exclude_unset=True) if payload else {}    
-        logger.info(f"[PATCH /orders/{code}] Nuevo estado: {data.get('status', order.status)}")
-    
+
+    data = payload.model_dump(exclude_unset=True) if payload else {}
+    logger.info(f"[PATCH /orders/{code}] Nuevo estado: {data.get('status', order.status)}")
+
     if not data:
         return order
-        
+
     for field, value in data.items():
         setattr(order, field, value)
-        
+
     db.commit()
     logger.info("DATABASE COMMITTED!")
-    
+
     db.refresh(order)
     logger.info(f"[PATCH /orders/{code}] Estado final: {order.status}")
     logger.info("="*50)
