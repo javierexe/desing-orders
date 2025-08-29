@@ -56,19 +56,18 @@ function AppInner() {
   }
 
   async function handleChangeStatus(code, status) {
-       
     // actualización optimista
     setOrders(prev => prev.map(o => o.code === code ? { ...o, status } : o));
-    
+    // No activar loading para evitar spinner tras drag & drop
     try {
-      // Enviar el cambio de estado como PATCH con el campo correcto
-      const result = await api.updateOrder(code, { status });
-      
-      await fetchOrders(); // refresca la lista desde el backend
-      
+      await api.updateOrder(code, { status });
+      // Refresca pedidos en background, sin mostrar spinner
+      const data = await api.listOrders();
+      setOrders(data);
     } catch (err) {
       console.error("❌ Error en handleChangeStatus:", err);
-      await fetchOrders();
+      const data = await api.listOrders();
+      setOrders(data);
       showToast("No se pudo actualizar el estado", "error");
     }
   }
