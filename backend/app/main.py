@@ -2,6 +2,7 @@ from fastapi import FastAPI, Depends, HTTPException, Body, Response
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from typing import List, Optional
+from datetime import date
 from .db import SessionLocal
 from . import models, schemas
 import logging
@@ -74,6 +75,7 @@ def list_orders(db: Session = Depends(get_db)):
             status=order.status,
             delivery_method=order.delivery_method,
             due_date=order.due_date,
+            delivered_date=order.delivered_date,
             items=[schemas.OrderItemOut(
                 id=item.id,
                 description=item.description,
@@ -127,6 +129,7 @@ def create_order(payload: schemas.OrderCreate, db: Session = Depends(get_db)):
         status=order.status,
         delivery_method=order.delivery_method,
         due_date=order.due_date,
+        delivered_date=order.delivered_date,
         items=[schemas.OrderItemOut(
             id=item.id,
             description=item.description,
@@ -156,6 +159,17 @@ def update_order(
     if not data:
         return order
 
+    # Lógica especial: si el status cambia a "entregado" y no se especifica delivered_date
+    if "status" in data and data["status"] == "entregado":
+        if "delivered_date" not in data or data["delivered_date"] is None:
+            data["delivered_date"] = date.today()
+            logger.info(f"[PATCH /orders/{code}] Auto-estableciendo delivered_date: {data['delivered_date']}")
+    
+    # Si el status cambia a algo diferente de "entregado", limpiar delivered_date
+    elif "status" in data and data["status"] != "entregado":
+        data["delivered_date"] = None
+        logger.info(f"[PATCH /orders/{code}] Limpiando delivered_date porque status != 'entregado'")
+
     # Actualizar campos simples
     for field, value in data.items():
         if field != "items":
@@ -179,7 +193,29 @@ def update_order(
         db.commit()
 
     db.refresh(order)
-    return order
+    
+    # Calcular totales y construir response manualmente
+    totals = calculate_order_totals(order)
+    return schemas.OrderOut(
+        id=order.id,
+        code=order.code,
+        client_name=order.client_name,
+        title=order.title,
+        description=order.description,
+        status=order.status,
+        delivery_method=order.delivery_method,
+        due_date=order.due_date,
+        delivered_date=order.delivered_date,
+        items=[schemas.OrderItemOut(
+            id=item.id,
+            description=item.description,
+            quantity=item.quantity,
+            due_date=item.due_date,
+            price=item.price,
+            paid_amount=item.paid_amount
+        ) for item in order.items],
+        **totals
+    )
 
 
 @app.delete("/orders/{code}", status_code=204)
