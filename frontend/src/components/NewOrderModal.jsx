@@ -128,7 +128,9 @@ export default function NewOrderModal({
       items: items.map(item => ({
         description: item.description,
         due_date: normalizeDate(item.due_date),
-        quantity: Number(item.quantity) || 1
+        quantity: Number(item.quantity) || 1,
+        price: Number(item.price) || 0,
+        paid_amount: Number(item.paid_amount) || 0
       }))
     };
 

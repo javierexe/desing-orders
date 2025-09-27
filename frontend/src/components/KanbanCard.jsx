@@ -155,12 +155,12 @@ const KanbanCard = React.memo(function KanbanCard({
               )}
               {order.total_paid > 0 && (
                 <span className="inline-flex items-center rounded-full px-2 py-0.5 bg-blue-50 text-blue-700 ring-1 ring-blue-200">
-                  Abonado: {parseInt(order.total_paid).toLocaleString('es-CL', { style: 'currency', currency: 'CLP' })}
+                  Abono: {parseInt(order.total_paid).toLocaleString('es-CL', { style: 'currency', currency: 'CLP' })}
                 </span>
               )}
               {order.pending_amount > 0 && (
                 <span className="inline-flex items-center rounded-full px-2 py-0.5 bg-red-50 text-red-700 ring-1 ring-red-200">
-                  Pendiente: {parseInt(order.pending_amount).toLocaleString('es-CL', { style: 'currency', currency: 'CLP' })}
+                  Saldo: {parseInt(order.pending_amount).toLocaleString('es-CL', { style: 'currency', currency: 'CLP' })}
                 </span>
               )}
             </div>
