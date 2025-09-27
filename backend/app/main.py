@@ -33,6 +33,25 @@ def get_db():
     finally:
         db.close()
 
+def calculate_order_totals(order: models.Order):
+    """Calcula los totales de precio, abonos y pendiente para una orden"""
+    if not order.items:
+        return {
+            "total_price": 0,
+            "total_paid": 0, 
+            "pending_amount": 0
+        }
+    
+    total_price = sum(item.price or 0 for item in order.items)
+    total_paid = sum(item.paid_amount or 0 for item in order.items)
+    pending_amount = total_price - total_paid
+    
+    return {
+        "total_price": total_price,
+        "total_paid": total_paid,
+        "pending_amount": pending_amount
+    }
+
 @app.get("/health")
 def health():
     return {"ok": True}
@@ -40,7 +59,33 @@ def health():
 @app.get("/orders", response_model=List[schemas.OrderOut])
 def list_orders(db: Session = Depends(get_db)):
     from sqlalchemy.orm import joinedload
-    return db.query(models.Order).options(joinedload(models.Order.items)).order_by(models.Order.id.desc()).all()
+    orders = db.query(models.Order).options(joinedload(models.Order.items)).order_by(models.Order.id.desc()).all()
+    
+    # Agregar totales calculados a cada orden
+    result = []
+    for order in orders:
+        totals = calculate_order_totals(order)
+        result.append(schemas.OrderOut(
+            id=order.id,
+            code=order.code,
+            client_name=order.client_name,
+            title=order.title,
+            description=order.description,
+            status=order.status,
+            delivery_method=order.delivery_method,
+            due_date=order.due_date,
+            items=[schemas.OrderItemOut(
+                id=item.id,
+                description=item.description,
+                quantity=item.quantity,
+                due_date=item.due_date,
+                price=item.price,
+                paid_amount=item.paid_amount
+            ) for item in order.items],
+            **totals
+        ))
+    
+    return result
 
 @app.post("/orders", response_model=schemas.OrderOut, status_code=201)
 def create_order(payload: schemas.OrderCreate, db: Session = Depends(get_db)):
@@ -58,12 +103,40 @@ def create_order(payload: schemas.OrderCreate, db: Session = Depends(get_db)):
             order_id=order.id,
             description=item.description,
             quantity=item.quantity,
-            due_date=item.due_date
+            due_date=item.due_date,
+            price=item.price,
+            paid_amount=item.paid_amount
         )
         db.add(order_item)
     db.commit()
-    db.refresh(order)
-    return order
+    
+    # Recargar la orden completa con sus items
+    from sqlalchemy.orm import joinedload
+    order = db.query(models.Order).options(joinedload(models.Order.items)).filter(models.Order.id == order.id).first()
+    
+    # Calcular totales
+    totals = calculate_order_totals(order)
+    
+    # Construir response manualmente
+    return schemas.OrderOut(
+        id=order.id,
+        code=order.code,
+        client_name=order.client_name,
+        title=order.title,
+        description=order.description,
+        status=order.status,
+        delivery_method=order.delivery_method,
+        due_date=order.due_date,
+        items=[schemas.OrderItemOut(
+            id=item.id,
+            description=item.description,
+            quantity=item.quantity,
+            due_date=item.due_date,
+            price=item.price,
+            paid_amount=item.paid_amount
+        ) for item in order.items],
+        **totals
+    )
 
 
 @app.patch("/orders/{code}", response_model=schemas.OrderOut)

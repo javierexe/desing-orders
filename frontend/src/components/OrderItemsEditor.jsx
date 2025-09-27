@@ -19,15 +19,20 @@ function OrderItemsEditor({ items, handleAdd, handleDelete, handleChange }) {
       </div>
       {items.length === 0 && <div className="text-sm text-slate-500">Sin ítems aún.</div>}
   {items.length > 0 && (
-        <div className="grid grid-cols-[2fr_0.7fr_1.2fr_0.5fr] gap-2 items-center text-xs font-semibold text-slate-600 mb-1">
+        <div className="grid grid-cols-[2fr_0.7fr_1fr_1fr_1.2fr_0.5fr] gap-2 items-center text-xs font-semibold text-slate-600 mb-1">
           <div>Descripción</div>
-          <div>Cantidad</div>
+          <div>Cant.</div>
+          <div>Precio</div>
+          <div>Abono</div>
           <div>Fecha entrega</div>
           <div>Eliminar</div>
         </div>
       )}
       {items.map((item, idx) => ( 
-        <div key={idx} className="grid grid-cols-[2fr_0.7fr_1.2fr_0.5fr] gap-2 items-center border-b pb-2 mb-2">
+        <div key={idx} className={`grid grid-cols-[2fr_0.7fr_1fr_1fr_1.2fr_0.5fr] gap-2 items-center border-b pb-2 mb-2 ${
+          (item.price > 0 && item.paid_amount >= item.price) ? 'bg-green-50' : 
+          (item.paid_amount > 0) ? 'bg-blue-50' : ''
+        }`}>
           <label className="text-sm flex flex-col justify-center">
             {items.length === 1 ? null : <span className="sr-only">Descripción</span>}
             <input
@@ -48,6 +53,42 @@ function OrderItemsEditor({ items, handleAdd, handleDelete, handleChange }) {
               onChange={e => handleChange(idx, "quantity", e.target.value)}
               className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-center"
             />
+          </label>
+          <label className="text-sm flex flex-col justify-center">
+            {items.length === 1 ? null : <span className="sr-only">Precio</span>}
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-500">$</span>
+              <input
+                type="text"
+                value={item.price ? parseInt(item.price).toLocaleString('es-CL') : ""}
+                onChange={e => {
+                  const value = e.target.value.replace(/[^0-9]/g, '');
+                  handleChange(idx, "price", parseInt(value) || 0);
+                }}
+                className="mt-1 w-full rounded-xl border border-slate-300 pl-6 pr-3 py-2 text-right font-mono"
+                placeholder="0"
+              />
+            </div>
+          </label>
+          <label className="text-sm flex flex-col justify-center">
+            {items.length === 1 ? null : <span className="sr-only">Abono</span>}
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-500">$</span>
+              <input
+                type="text"
+                value={item.paid_amount ? parseInt(item.paid_amount).toLocaleString('es-CL') : ""}
+                onChange={e => {
+                  const value = e.target.value.replace(/[^0-9]/g, '');
+                  const numValue = parseInt(value) || 0;
+                  if (numValue <= (item.price || 0)) {
+                    handleChange(idx, "paid_amount", numValue);
+                  }
+                }}
+                className="mt-1 w-full rounded-xl border border-slate-300 pl-6 pr-3 py-2 text-right font-mono"
+                placeholder="0"
+                title={`Máximo: ${(parseInt(item.price) || 0).toLocaleString('es-CL', { style: 'currency', currency: 'CLP' })}`}
+              />
+            </div>
           </label>
           <label className="text-sm flex flex-col justify-center">
             {items.length === 1 ? null : <span className="sr-only">Fecha entrega</span>}

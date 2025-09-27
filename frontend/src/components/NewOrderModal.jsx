@@ -128,7 +128,9 @@ export default function NewOrderModal({
       items: items.map(item => ({
         description: item.description,
         due_date: normalizeDate(item.due_date),
-        quantity: Number(item.quantity) || 1
+        quantity: Number(item.quantity) || 1,
+        price: Number(item.price) || 0,
+        paid_amount: Number(item.paid_amount) || 0
       }))
     };
 
@@ -241,13 +243,41 @@ export default function NewOrderModal({
           <div className="col-span-full">
             <OrderItemsEditor
               items={items}
-              handleAdd={() => setItems([...items, { description: "", quantity: 1, due_date: "" }])}
+              handleAdd={() => setItems([...items, { description: "", quantity: 1, due_date: "", price: 0, paid_amount: 0 }])}
               handleDelete={idx => setItems(items.filter((_, i) => i !== idx))}
               handleChange={(idx, field, value) => {
                 setItems(items => items.map((item, i) => i === idx ? { ...item, [field]: value } : item));
               }}
             />
           </div>
+
+          {/* Resumen de totales */}
+          {items.length > 0 && (
+            <div className="col-span-full bg-slate-50 rounded-xl p-4 space-y-2">
+              <h4 className="font-semibold text-sm text-slate-700">Resumen de totales</h4>
+              <div className="grid grid-cols-3 gap-4 text-sm">
+                <div>
+                  <span className="text-slate-600">Total precio:</span>
+                  <div className="font-semibold text-green-700">
+                    {items.reduce((sum, item) => sum + (parseInt(item.price) || 0), 0).toLocaleString('es-CL', { style: 'currency', currency: 'CLP' })}
+                  </div>
+                </div>
+                <div>
+                  <span className="text-slate-600">Total abonado:</span>
+                  <div className="font-semibold text-blue-700">
+                    {items.reduce((sum, item) => sum + (parseInt(item.paid_amount) || 0), 0).toLocaleString('es-CL', { style: 'currency', currency: 'CLP' })}
+                  </div>
+                </div>
+                <div>
+                  <span className="text-slate-600">Pendiente:</span>
+                  <div className="font-semibold text-red-700">
+                    {(items.reduce((sum, item) => sum + (parseInt(item.price) || 0), 0) - 
+                       items.reduce((sum, item) => sum + (parseInt(item.paid_amount) || 0), 0)).toLocaleString('es-CL', { style: 'currency', currency: 'CLP' })}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Descripción al final */}
           <label className="col-span-full text-sm">
