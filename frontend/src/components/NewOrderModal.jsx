@@ -86,8 +86,8 @@ export default function NewOrderModal({
   }, [open, editMode, order?.code]);
 
   const isDirty = useMemo(
-    () => JSON.stringify(form) !== JSON.stringify(initialFormRef.current),
-    [form]
+    () => JSON.stringify({ form, items }) !== JSON.stringify({ form: initialFormRef.current, items: editMode && order ? (order.items ?? []) : [] }),
+    [form, items, editMode, order]
   );
 
   const isValid = Boolean(

@@ -168,6 +168,7 @@ function AppInner() {
                 open={showNew}
                 onClose={() => setShowNew(false)}
                 onCreated={fetchOrders}
+                onNotify={showToast}
               />
               {showEdit && (
                 <NewOrderModal
@@ -176,6 +177,7 @@ function AppInner() {
                   editMode={true}
                   onClose={() => { setShowEdit(false); setOrderToEdit(null); }}
                   onUpdated={fetchOrders}
+                  onNotify={showToast}
                 />
               )}
             </Layout>

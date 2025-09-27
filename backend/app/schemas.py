@@ -75,6 +75,7 @@ class OrderUpdate(BaseModel):
     due_date: Optional[date] = None
     description: Optional[str] = None
     status: Optional[str] = None
+    items: Optional[List[OrderItemCreate]] = None
 
     @field_validator("client_name", "title", "description", mode="before")
     @classmethod
