@@ -17,9 +17,12 @@ const KanbanCard = React.memo(function KanbanCard({
   // --- Cálculos (dentro del componente) ---
   const due = order?.due_date || null;
   const isDelivered = order?.status === "entregado";
+  const isReady = order?.status === "listo";
   const isCompleted = order?.status === "entregado" || order?.status === "cancelado";
   const dueClass = isDelivered
     ? "bg-green-100 text-green-800 ring-green-200"
+    : isReady
+    ? "bg-blue-100 text-blue-800 ring-blue-200"
     : (isOverdue(due) && !isCompleted)
     ? "bg-rose-100 text-rose-800 ring-rose-200"
     : isSoon(due) && !isCompleted
@@ -29,17 +32,21 @@ const KanbanCard = React.memo(function KanbanCard({
     : "bg-slate-100 text-slate-700 ring-slate-200";
 
   const deliveredDate = order?.delivered_date || null;
-  const remainingLabel = isDelivered && deliveredDate 
-    ? parseLocalDateISO(deliveredDate)?.toLocaleDateString('es-CL', { 
-        year: 'numeric', 
-        month: 'short', 
-        day: 'numeric' 
-      }) || "Entregado"
-    : isDelivered 
-    ? "Entregado"
-    : order?.status === "cancelado"
-    ? "Cancelado"
-    : humanDueLabel(due);
+  let remainingLabel;
+  if (isDelivered && deliveredDate) {
+    remainingLabel = parseLocalDateISO(deliveredDate)?.toLocaleDateString('es-CL', { year: 'numeric', month: 'short', day: 'numeric' }) || "Entregado";
+  } else if (isDelivered) {
+    remainingLabel = "Entregado";
+  } else if (order?.status === "cancelado") {
+    remainingLabel = "Cancelado";
+  } else if (isReady) {
+    // Mostrar fecha en que quedó listo para retiro
+    // Usar delivered_date si existe, sino due_date, sino hoy
+    const readyDate = order?.delivered_date || order?.due_date || new Date().toISOString().slice(0,10);
+    remainingLabel = `Listo desde: ${parseLocalDateISO(readyDate)?.toLocaleDateString('es-CL', { year: 'numeric', month: 'short', day: 'numeric' })}`;
+  } else {
+    remainingLabel = humanDueLabel(due);
+  }
   const dueDateLocal = parseLocalDateISO(due);
 
   const method = String(order?.delivery_method || "retiro").toLowerCase();
@@ -138,7 +145,9 @@ const KanbanCard = React.memo(function KanbanCard({
                 title={`Fecha: ${order.due_date}`}
               >
                 <Calendar className="h-3.5 w-3.5" />
-                <span>Entrega: {remainingLabel}</span>
+                <span>
+                  {isReady ? remainingLabel : `Entrega: ${remainingLabel}`}
+                </span>
               </span>
             ) : (
               <span

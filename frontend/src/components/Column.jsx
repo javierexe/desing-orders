@@ -23,8 +23,10 @@ export default function Column({ col, itemIds, getOrderById, onEdit, onDelete })
     data: { columnId: col.key },
   });
 
+  // Si está colapsada, usar un estilo compacto y ancho fijo para apilar
+  const collapsedStyle = isCollapsed ? "w-[260px] max-w-xs min-w-[220px]" : "";
   return (
-    <div className="bg-slate-50 rounded-xl border border-slate-200">
+    <div className={["bg-slate-50 rounded-xl border border-slate-200", collapsedStyle].join(" ")}> 
       <header className="px-3 py-2 text-md font-bold text-slate-700 flex items-center justify-between">
         <div className="flex items-center gap-2">
           {isCollapsible && (
