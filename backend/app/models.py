@@ -19,6 +19,7 @@ class Order(Base):
     delivery_method = Column(String(20), nullable=False, default="retiro")
     due_date = Column(Date, nullable=True)
     delivered_date = Column(Date, nullable=True)  # Fecha cuando fue entregado
+    ready_date = Column(Date, nullable=True)  # Fecha cuando pasó a 'listo'
 
     items = relationship("OrderItem", back_populates="order", cascade="all, delete-orphan")
 

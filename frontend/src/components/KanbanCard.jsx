@@ -40,9 +40,8 @@ const KanbanCard = React.memo(function KanbanCard({
   } else if (order?.status === "cancelado") {
     remainingLabel = "Cancelado";
   } else if (isReady) {
-    // Mostrar fecha en que quedó listo para retiro
-    // Usar delivered_date si existe, sino due_date, sino hoy
-    const readyDate = order?.delivered_date || order?.due_date || new Date().toISOString().slice(0,10);
+    // Mostrar la fecha en que el pedido pasó a 'listo'
+    const readyDate = order?.ready_date || new Date().toISOString().slice(0,10);
     remainingLabel = `Listo desde: ${parseLocalDateISO(readyDate)?.toLocaleDateString('es-CL', { year: 'numeric', month: 'short', day: 'numeric' })}`;
   } else {
     remainingLabel = humanDueLabel(due);

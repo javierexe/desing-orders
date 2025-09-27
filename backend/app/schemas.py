@@ -26,6 +26,7 @@ class OrderBase(BaseModel):
     delivery_method: Literal["retiro", "despacho"]
     due_date: Optional[date] = None
     delivered_date: Optional[date] = None
+    ready_date: Optional[date] = None
     items: List[OrderItemCreate] = []
 
     # Limpia espacios
@@ -53,6 +54,7 @@ class OrderUpdate(BaseModel):
     delivery_method: Optional[Literal["retiro", "despacho"]] = None
     due_date: Optional[date] = None
     delivered_date: Optional[date] = None
+    ready_date: Optional[date] = None
     description: Optional[str] = None
     status: Optional[str] = None
     items: Optional[List[OrderItemCreate]] = None
@@ -76,6 +78,7 @@ class OrderOut(OrderBase):
     code: str
     status: str  # en la respuesta lo exigimos no-nulo
     items: List[OrderItemOut] = []
+    ready_date: Optional[date] = None
     total_price: Optional[int] = None  # Suma de precios de todos los items en centavos
     total_paid: Optional[int] = None   # Suma de abonos de todos los items en centavos
     pending_amount: Optional[int] = None  # Diferencia entre total_price y total_paid en centavos

@@ -169,15 +169,23 @@ def update_order(
         return order
 
     # Lógica especial: si el status cambia a "entregado" y no se especifica delivered_date
-    if "status" in data and data["status"] == "entregado":
-        if "delivered_date" not in data or data["delivered_date"] is None:
-            data["delivered_date"] = date.today()
-            logger.info(f"[PATCH /orders/{code}] Auto-estableciendo delivered_date: {data['delivered_date']}")
-    
-    # Si el status cambia a algo diferente de "entregado", limpiar delivered_date
-    elif "status" in data and data["status"] != "entregado":
-        data["delivered_date"] = None
-        logger.info(f"[PATCH /orders/{code}] Limpiando delivered_date porque status != 'entregado'")
+    if "status" in data:
+        if data["status"] == "entregado":
+            if "delivered_date" not in data or data["delivered_date"] is None:
+                data["delivered_date"] = date.today()
+                logger.info(f"[PATCH /orders/{code}] Auto-estableciendo delivered_date: {data['delivered_date']}")
+            # Limpiar ready_date si pasa a entregado
+            data["ready_date"] = None
+        elif data["status"] == "listo":
+            # Si pasa a 'listo', registrar ready_date si no existe
+            if not order.ready_date:
+                data["ready_date"] = date.today()
+                logger.info(f"[PATCH /orders/{code}] Auto-estableciendo ready_date: {data['ready_date']}")
+        else:
+            # Si el status cambia a algo diferente de "entregado" o "listo", limpiar delivered_date y ready_date
+            data["delivered_date"] = None
+            data["ready_date"] = None
+            logger.info(f"[PATCH /orders/{code}] Limpiando delivered_date y ready_date porque status != 'entregado' ni 'listo'")
 
     # Actualizar campos simples
     for field, value in data.items():
