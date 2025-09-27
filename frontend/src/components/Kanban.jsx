@@ -24,11 +24,11 @@ import { normalizeStatus, toId, groupOrdersByStatus } from "./kanbanHelpers";
 import { useKanbanDnD } from "./useKanbanDnD";
 
 const COLUMNS = [
-  { key: "recibido",   title: "Recibido" },
+  { key: "recibido",   title: "Recibidos" },
   { key: "en_proceso", title: "En Proceso" },
-  { key: "listo",      title: "Listo" },
-  { key: "entregado",  title: "Entregado" },
-  { key: "cancelado",  title: "Cancelado" },
+  { key: "listo",      title: "Listos" },
+  { key: "entregado",  title: "Entregados" },
+  { key: "cancelado",  title: "Cancelados" },
 ];
 
 export default function Kanban({ orders = [], loading = false, onChangeStatus, onEditOrder, onDelete }) {

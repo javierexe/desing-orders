@@ -25,6 +25,7 @@ class OrderBase(BaseModel):
     status: Optional[str] = "recibido"
     delivery_method: Literal["retiro", "despacho"]
     due_date: Optional[date] = None
+    delivered_date: Optional[date] = None
     items: List[OrderItemCreate] = []
 
     # Limpia espacios
@@ -38,7 +39,7 @@ class OrderBase(BaseModel):
         return v
 
     # Permite "" -> None en fecha
-    @field_validator("due_date", mode="before")
+    @field_validator("due_date", "delivered_date", mode="before")
     @classmethod
     def _empty_date_to_none(cls, v):
         return None if v == "" else v
@@ -51,6 +52,7 @@ class OrderUpdate(BaseModel):
     title: Optional[str] = None
     delivery_method: Optional[Literal["retiro", "despacho"]] = None
     due_date: Optional[date] = None
+    delivered_date: Optional[date] = None
     description: Optional[str] = None
     status: Optional[str] = None
     items: Optional[List[OrderItemCreate]] = None
@@ -64,7 +66,7 @@ class OrderUpdate(BaseModel):
                 return None
         return v
 
-    @field_validator("due_date", mode="before")
+    @field_validator("due_date", "delivered_date", mode="before")
     @classmethod
     def _empty_date_to_none(cls, v):
         return None if v == "" else v

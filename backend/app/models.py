@@ -18,6 +18,7 @@ class Order(Base):
     status = Column(String(20), nullable=False, default="recibido")  # recibido|en_proceso|listo|entregado
     delivery_method = Column(String(20), nullable=False, default="retiro")
     due_date = Column(Date, nullable=True)
+    delivered_date = Column(Date, nullable=True)  # Fecha cuando fue entregado
 
     items = relationship("OrderItem", back_populates="order", cascade="all, delete-orphan")
 

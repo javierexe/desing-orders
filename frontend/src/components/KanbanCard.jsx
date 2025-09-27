@@ -27,7 +27,16 @@ const KanbanCard = React.memo(function KanbanCard({
     ? "bg-blue-100 text-blue-800 ring-blue-200"
     : "bg-slate-100 text-slate-700 ring-slate-200";
 
-  const remainingLabel = isDelivered ? "Entregado" : humanDueLabel(due);
+  const deliveredDate = order?.delivered_date || null;
+  const remainingLabel = isDelivered && deliveredDate 
+    ? parseLocalDateISO(deliveredDate)?.toLocaleDateString('es-CL', { 
+        year: 'numeric', 
+        month: 'short', 
+        day: 'numeric' 
+      }) || "Entregado"
+    : isDelivered 
+    ? "Entregado" 
+    : humanDueLabel(due);
   const dueDateLocal = parseLocalDateISO(due);
 
   const method = String(order?.delivery_method || "retiro").toLowerCase();
