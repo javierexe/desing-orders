@@ -11,6 +11,22 @@ function todayISO() {
   const d = String(t.getDate()).padStart(2, "0");
   return `${y}-${m}-${d}`;
 }
+// Calcula la fecha en N días hábiles (sin contar fines de semana)
+function addBusinessDays(startDate, days) {
+  let date = new Date(startDate);
+  let added = 0;
+  while (added < days) {
+    date.setDate(date.getDate() + 1);
+    const day = date.getDay();
+    if (day !== 0 && day !== 6) { // 0=Domingo, 6=Sábado
+      added++;
+    }
+  }
+  const yyyy = date.getFullYear();
+  const mm = String(date.getMonth() + 1).padStart(2, "0");
+  const dd = String(date.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+}
 function isBeforeTodayISO(iso) {
   return !!iso && iso < todayISO();
 }
@@ -83,10 +99,20 @@ export default function NewOrderModal({
       initialFormRef.current = blank;
       setItems([]);
     }
-    // Solo actualiza el ref si el pedido a editar cambia realmente
-    // Esto evita que el dirty-check se rompa por renders innecesarios
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, editMode, order?.code]);
+
+  // Cuando se agregan o cambian ítems, ajustar la fecha compromiso del pedido
+  useEffect(() => {
+    if (items.length > 0) {
+      // Buscar la fecha de entrega más próxima
+      const fechas = items.map(i => i.due_date).filter(Boolean);
+      if (fechas.length > 0) {
+        const menor = fechas.reduce((a, b) => (a < b ? a : b));
+        setForm(f => ({ ...f, due_date: menor }));
+      }
+    }
+  }, [items]);
 
   const isDirty = useMemo(
     () => JSON.stringify({ form, items }) !== JSON.stringify({ form: initialFormRef.current, items: editMode && order ? (order.items ?? []) : [] }),
@@ -262,7 +288,11 @@ export default function NewOrderModal({
           <div className="col-span-full">
             <OrderItemsEditor
               items={items}
-              handleAdd={() => setItems([...items, { description: "", quantity: 1, due_date: "", price: 0, paid_amount: 0 }])}
+              handleAdd={() => {
+                // Fecha de entrega por defecto: 4 días hábiles desde hoy
+                const fechaDefecto = addBusinessDays(form.due_date || todayISO(), 4);
+                setItems([...items, { description: "", quantity: 1, due_date: fechaDefecto, price: 0, paid_amount: 0 }]);
+              }}
               handleDelete={idx => setItems(items.filter((_, i) => i !== idx))}
               handleChange={(idx, field, value) => {
                 setItems(items => items.map((item, i) => i === idx ? { ...item, [field]: value } : item));

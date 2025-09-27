@@ -94,7 +94,16 @@ def create_order(payload: schemas.OrderCreate, db: Session = Depends(get_db)):
     # ⚠️ Ya no revisamos code, la BD lo maneja.
     # Creamos el objeto sin 'code'
     items_data = payload.items if hasattr(payload, "items") else []
-    order = models.Order(**payload.model_dump(exclude={"code", "items"}))
+    # Ajustar due_date a la fecha menor de los ítems si existe
+    min_due = None
+    if items_data:
+        fechas = [item.due_date for item in items_data if item.due_date]
+        if fechas:
+            min_due = min(fechas)
+    order_kwargs = payload.model_dump(exclude={"code", "items"})
+    if min_due:
+        order_kwargs["due_date"] = min_due
+    order = models.Order(**order_kwargs)
     db.add(order)
     db.commit()
     db.refresh(order)
