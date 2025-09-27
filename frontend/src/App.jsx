@@ -18,8 +18,11 @@ function getKpis(orders) {
   const k = { total: orders.length, recibido: 0, en_proceso: 0, listo: 0, entregado: 0, overdue: 0, soon: 0 };
   for (const o of orders) {
     if (k[o.status] !== undefined) k[o.status] += 1;
-    if (isOverdue(o.due_date)) k.overdue += 1;
-    else if (isSoon(o.due_date)) k.soon += 1;
+    
+    // Solo contar como atrasados los pedidos que no están entregados ni cancelados
+    const isCompleted = o.status === "entregado" || o.status === "cancelado";
+    if (isOverdue(o.due_date) && !isCompleted) k.overdue += 1;
+    else if (isSoon(o.due_date) && !isCompleted) k.soon += 1;
   }
   return k;
 }
