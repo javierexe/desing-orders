@@ -16,16 +16,18 @@ const KanbanCard = React.memo(function KanbanCard({
 }) {
   // --- Cálculos (dentro del componente) ---
   const due = order?.due_date || null;
-  const dueClass =
-    isOverdue(due)
-      ? "bg-rose-100 text-rose-800 ring-rose-200"
-      : isSoon(due)
-      ? "bg-amber-100 text-amber-800 ring-amber-200"
-      : isThisWeek(due)
-      ? "bg-blue-100 text-blue-800 ring-blue-200"
-      : "bg-slate-100 text-slate-700 ring-slate-200";
+  const isDelivered = order?.status === "entregado";
+  const dueClass = isDelivered
+    ? "bg-green-100 text-green-800 ring-green-200"
+    : (isOverdue(due) && !isDelivered)
+    ? "bg-rose-100 text-rose-800 ring-rose-200"
+    : isSoon(due)
+    ? "bg-amber-100 text-amber-800 ring-amber-200"
+    : isThisWeek(due)
+    ? "bg-blue-100 text-blue-800 ring-blue-200"
+    : "bg-slate-100 text-slate-700 ring-slate-200";
 
-  const remainingLabel = humanDueLabel(due);
+  const remainingLabel = isDelivered ? "Entregado" : humanDueLabel(due);
   const dueDateLocal = parseLocalDateISO(due);
 
   const method = String(order?.delivery_method || "retiro").toLowerCase();

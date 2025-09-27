@@ -8,10 +8,15 @@ import KanbanCard from "./KanbanCard";
 
 export default function Column({ col, itemIds, getOrderById, onEdit, onDelete }) {
   // Estado para colapsar solo la columna de entregados (auto-colapsa si hay más de 8 pedidos)
-  const [isCollapsed, setIsCollapsed] = useState(col.key === "entregado" && itemIds.length > 8);
+  const [isCollapsed, setIsCollapsed] = useState(false);
   const isCollapsible = col.key === "entregado";
   
-  // No necesitamos useEffect que interfiera con el estado del usuario
+  // useEffect para actualizar el estado collapsed cuando cambien los itemIds
+  useEffect(() => {
+    if (col.key === "entregado" && itemIds.length > 8) {
+      setIsCollapsed(true);
+    }
+  }, [col.key, itemIds.length]);
   
   const { setNodeRef, isOver } = useDroppable({
     id: col.key,
