@@ -59,6 +59,7 @@ export function buildOrderPayload(form) {
     delivery_method: (form.delivery_method || "").toLowerCase() || "retiro",
     status: (form.status || "").toLowerCase() || "recibido",
     due_date: toISODate(form.due_date),
+    delivered_date: toISODate(form.delivered_date),
   };
   return compactObject(base);
 }

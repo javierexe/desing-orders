@@ -174,6 +174,9 @@ def update_order(
     for field, value in data.items():
         if field != "items":
             setattr(order, field, value)
+    
+    # Hacer commit de los cambios simples
+    db.commit()
 
     # Actualizar ítems si vienen en el payload
     if "items" in data:

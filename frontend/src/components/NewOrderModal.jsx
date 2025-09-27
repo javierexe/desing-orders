@@ -40,6 +40,7 @@ export default function NewOrderModal({
     title: "",
     delivery_method: "retiro",
     due_date: "",
+    delivered_date: "",
     description: "",
     status: "recibido"
   });
@@ -61,6 +62,7 @@ export default function NewOrderModal({
         title: order.title ?? "",
         delivery_method: order.delivery_method ?? "retiro",
         due_date: normDate(order.due_date),
+        delivered_date: normDate(order.delivered_date),
         description: order.description ?? "",
         status: order.status ?? "recibido"
       };
@@ -73,6 +75,7 @@ export default function NewOrderModal({
         title: "",
         delivery_method: "retiro",
         due_date: todayISO(),
+        delivered_date: "",
         description: "",
         status: "recibido"
       };
@@ -238,6 +241,22 @@ export default function NewOrderModal({
               className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 outline-none focus:ring-2 focus:ring-sky-400"
             />
           </label>
+
+          {/* Campo de fecha de entrega - solo visible si el pedido está entregado */}
+          {form.status === "entregado" && (
+            <label className="text-sm">
+              Fecha de entrega
+              <input
+                type="date"
+                value={form.delivered_date}
+                onChange={(e) => setForm({ ...form, delivered_date: e.target.value })}
+                className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 outline-none focus:ring-2 focus:ring-sky-400"
+              />
+              <span className="text-xs text-slate-500 mt-1 block">
+                Se establece automáticamente al marcar como entregado
+              </span>
+            </label>
+          )}
 
           {/* Ítems del pedido */}
           <div className="col-span-full">

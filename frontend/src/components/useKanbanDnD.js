@@ -48,36 +48,32 @@ export function useKanbanDnD(columns, setColumns, getOrderById, onChangeStatus, 
   }
 
   function handleDragEnd(e) {
-    
     const { active, over } = e;
     setActiveId(null);
+    
     if (!over) return;
+    
     const aId = String(active.id);
     const oId = String(over.id);
+    
+    // Usar siempre originalColumns para determinar origen (más confiable)
     const from = originalColumns ? findContainerOf(aId, originalColumns) : findContainerOf(aId, columns);
+    
     let to = null;
     if (columns[oId]) {
       to = oId;
     } else {
       to = findContainerOf(oId, columns);
     }
+    
+    // Limpiar estado de drag
+    setOriginalColumns(null);
+    
+    // Solo ejecutar si hubo cambio de columna
     if (from && to && from !== to) {
       const moved = getOrderById(aId);
       if (moved && onChangeStatus) {
         onChangeStatus(moved.code, backendStatus[to] || to);
-      }
-    }
-    // Eliminar cualquier alert residual
-    
-    if (!from || !to) return;
-    if (from !== to) {
-      const moved = getOrderById(aId);
-      
-      if (moved && onChangeStatus) {
-        onChangeStatus(moved.code, backendStatus[to] || to);
-        
-      } else {
-        
       }
     }
   }
