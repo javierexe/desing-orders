@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from "react";
-import { buildOrderPayload, fetchJSON, HttpError } from "../utils/http"; // ajusta la ruta
-
-const API = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+import OrderItemsEditor from "./OrderItemsEditor";
+import { buildOrderPayload, HttpError } from "../utils/http";
+import { api } from "../lib/api";
 
 // Helpers de fecha (solo fecha, sin hora/TZ)
 function todayISO() {
@@ -14,11 +14,23 @@ function todayISO() {
 function isBeforeTodayISO(iso) {
   return !!iso && iso < todayISO();
 }
+// Normaliza cualquier valor de fecha a YYYY-MM-DD (o null si no válido)
+function normalizeDate(value) {
+  if (!value) return null;
+  if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+  const d = new Date(value);
+  if (Number.isNaN(d)) return null;
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+}
 
 export default function NewOrderModal({
   open,
   onClose,
-  onCreated,
+  onCreated,   // callback al guardar (crear)
+  onUpdated,   // callback al guardar (editar)
   onNotify,
   order = null,
   editMode = false
@@ -28,15 +40,17 @@ export default function NewOrderModal({
     title: "",
     delivery_method: "retiro",
     due_date: "",
-    description: ""
+    description: "",
+    status: "recibido"
   });
+  const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
   // Guardamos el estado inicial para dirty-check
   const initialFormRef = useRef(form);
 
-  // Normaliza date a yyyy-mm-dd
+  // Normaliza date a yyyy-mm-dd (para precargar el form)
   const normDate = (v) => (v ? String(v).slice(0, 10) : "");
 
   useEffect(() => {
@@ -47,20 +61,24 @@ export default function NewOrderModal({
         title: order.title ?? "",
         delivery_method: order.delivery_method ?? "retiro",
         due_date: normDate(order.due_date),
-        description: order.description ?? ""
+        description: order.description ?? "",
+        status: order.status ?? "recibido"
       };
       setForm(next);
       initialFormRef.current = next;
+      setItems(order.items ?? []);
     } else {
       const blank = {
         client_name: "",
         title: "",
         delivery_method: "retiro",
         due_date: todayISO(),
-        description: ""
+        description: "",
+        status: "recibido"
       };
       setForm(blank);
       initialFormRef.current = blank;
+      setItems([]);
     }
     // Solo actualiza el ref si el pedido a editar cambia realmente
     // Esto evita que el dirty-check se rompa por renders innecesarios
@@ -96,25 +114,35 @@ export default function NewOrderModal({
     setLoading(true);
     setError("");
 
-    const payload = buildOrderPayload(form);
+    // Normaliza el status para que siempre sea el esperado
+    function normalizeStatus(s = "") {
+      return s.replace(/\s+/g, "_").toLowerCase();
+    }
+    // Construimos payload y aseguramos due_date normalizado
+    const base = buildOrderPayload(form);
+    const dueISO = normalizeDate(form.due_date);
+    const payload = {
+      ...base,
+      ...(dueISO ? { due_date: dueISO } : {}),
+      status: normalizeStatus(form.status || "recibido"),
+      items: items.map(item => ({
+        description: item.description,
+        due_date: normalizeDate(item.due_date),
+        quantity: Number(item.quantity) || 1
+      }))
+    };
 
     try {
+      let saved;
       if (editMode && order) {
-        await fetchJSON(`${API}/orders/${order.code}`, {
-          method: "PATCH",
-          body: JSON.stringify(payload),
-        });
+        saved = await api.updateOrder(order.code, payload);
         onNotify?.(`Pedido editado correctamente${order?.code ? `: ${order.code}` : ""}`, "success");
+        onUpdated?.(saved);
       } else {
-        // FastAPI devuelve objeto plano: { code, ... }
-        const created = await fetchJSON(`${API}/orders`, {
-          method: "POST",
-          body: JSON.stringify(payload),
-        });
-        onNotify?.(`Pedido creado: ${created.code}`, "success");
+        saved = await api.createOrder(payload); // FastAPI devuelve objeto plano: { code, ... }
+        onNotify?.(`Pedido creado: ${saved.code}`, "success");
+        onCreated?.(saved);
       }
-
-      onCreated?.();
       onClose?.();
     } catch (err) {
       let msg = "Error de red";
@@ -127,14 +155,12 @@ export default function NewOrderModal({
         msg = err.message;
       }
 
-      // Log detallado en consola para debug
       console.groupCollapsed("[Orders] Error al guardar");
       console.error("Status:", status);
       console.error("Message:", msg);
-      console.error("Payload:", buildOrderPayload(form));
+      console.error("Payload:", payload);
       console.groupEnd();
 
-      // Notificación visible para el usuario
       const pretty = status ? `[${status}] ${msg}` : msg;
       setError(pretty);
       onNotify?.(pretty, "error");
@@ -143,6 +169,7 @@ export default function NewOrderModal({
     }
   }
 
+  
   if (!open) return null;
 
   return (
@@ -160,8 +187,19 @@ export default function NewOrderModal({
           )}
         </div>
 
-        <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+  <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {/* 1a fila */}
+          <label className="text-sm">
+            Proyecto
+            <input
+              required
+              value={form.title}
+              onChange={(e) => setForm({ ...form, title: e.target.value })}
+              className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 outline-none focus:ring-2 focus:ring-sky-400"
+              placeholder="Catálogo 2025"
+            />
+          </label>
+          
           <label className="text-sm">
             Cliente
             <input
@@ -173,16 +211,7 @@ export default function NewOrderModal({
             />
           </label>
 
-          <label className="text-sm">
-            Título
-            <input
-              required
-              value={form.title}
-              onChange={(e) => setForm({ ...form, title: e.target.value })}
-              className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 outline-none focus:ring-2 focus:ring-sky-400"
-              placeholder="Catálogo 2025"
-            />
-          </label>
+          
 
           {/* 2a fila */}
           <label className="text-sm">
@@ -208,7 +237,19 @@ export default function NewOrderModal({
             />
           </label>
 
-          {/* Descripción a todo el ancho */}
+          {/* Ítems del pedido */}
+          <div className="col-span-full">
+            <OrderItemsEditor
+              items={items}
+              handleAdd={() => setItems([...items, { description: "", quantity: 1, due_date: "" }])}
+              handleDelete={idx => setItems(items.filter((_, i) => i !== idx))}
+              handleChange={(idx, field, value) => {
+                setItems(items => items.map((item, i) => i === idx ? { ...item, [field]: value } : item));
+              }}
+            />
+          </div>
+
+          {/* Descripción al final */}
           <label className="col-span-full text-sm">
             Descripción
             <textarea
@@ -219,6 +260,9 @@ export default function NewOrderModal({
               placeholder="Notas del pedido…"
             />
           </label>
+
+         
+
 
           <div className="col-span-full flex items-center gap-3">
             <button
@@ -234,17 +278,16 @@ export default function NewOrderModal({
               type="submit"
               className="rounded-xl bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-700 disabled:opacity-50"
             >
-              {editMode ? "Guardar cambios" : "Crear"}
+              {editMode ? "Guardar cambios" : "Crear pedido"}
             </button>
-
             <button
               type="button"
               onClick={onClose}
               className="rounded-xl border border-slate-300 px-4 py-2 text-sm hover:bg-slate-50"
+              disabled={loading}
             >
               Cancelar
             </button>
-
             {loading && <span className="text-sm text-slate-500">Guardando…</span>}
             {error && <span className="text-sm text-rose-600">{error}</span>}
             {isDueInvalid && (
@@ -254,6 +297,12 @@ export default function NewOrderModal({
               <span className="text-xs text-slate-500">Sin cambios</span>
             )}
           </div>
+
+          {loading && <span className="text-sm text-slate-500">Procesando…</span>}
+          {error && <span className="text-sm text-rose-600">{error}</span>}
+          {editMode && !isDirty && !loading && (
+            <span className="text-xs text-slate-500">Sin cambios</span>
+          )}
         </form>
       </div>
     </div>

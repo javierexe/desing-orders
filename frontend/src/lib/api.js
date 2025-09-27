@@ -1,35 +1,47 @@
 // frontend/src/lib/api.js
 const DEV = import.meta.env.DEV;
-
-// En desarrollo (Vite) usamos el proxy: /api
-// En producción, si existe, usamos VITE_API_BASE_URL (ej: https://tu-backend.com)
-const API_BASE =
-  (DEV ? "/api" : import.meta.env.VITE_API_BASE_URL) || "/api";
+const API_BASE = (DEV ? "/api" : import.meta.env.VITE_API_BASE_URL) || "/api";
 
 async function http(path, options = {}) {
-  const res = await fetch(`${API_BASE}${path}`, {
+  // Si el método es GET, no agregues Content-Type para evitar preflight CORS
+  const method = options.method ? options.method.toUpperCase() : "GET";
+  const headers = method === "GET"
+    ? { ...(options.headers || {}) }
+    : { "Content-Type": "application/json", ...(options.headers || {}) };
+    
+  const url = `${API_BASE}${path}`;
+  
+  
+  const res = await fetch(url, {
     ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...(options.headers || {}),
-    },
+    headers,
   });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json();
+
+
+  if (!res.ok) {
+    let msg = `HTTP ${res.status}`;
+    try {
+      const data = await res.json();
+      if (data?.detail) msg += `: ${typeof data.detail === "string" ? data.detail : JSON.stringify(data.detail)}`;
+    } catch {}
+    throw new Error(msg);
+  }
+
+  if (res.status === 204) return null;       // No Content
+  const text = await res.text();
+  if (!text) return null;
+  try { return JSON.parse(text); } catch { return text; }
 }
 
 export const api = {
-  listOrders() {
-    return http("/orders");
+  listOrders() { return http("/orders"); },
+  createOrder(order) { return http("/orders", { method: "POST", body: JSON.stringify(order) }); },
+  updateOrder(code, patch) {
+    
+    return http(`/orders/${encodeURIComponent(code)}`, { method: "PATCH", body: JSON.stringify(patch) });
   },
-  createOrder(order) {
-    return http("/orders", { method: "POST", body: JSON.stringify(order) });
-  },
-  updateStatus(code, status) {
-    return http(`/orders/${encodeURIComponent(code)}?status=${encodeURIComponent(status)}`, {
-      method: "PATCH",
-    });
-  },
+  deleteOrder(code) { return http(`/orders/${encodeURIComponent(code)}`, { method: "DELETE" }); },
 };
+
 
 

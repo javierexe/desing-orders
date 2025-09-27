@@ -1,7 +1,21 @@
 # app/schemas.py
 from pydantic import BaseModel, field_validator, ConfigDict
-from typing import Literal, Optional
+
+from typing import Literal, Optional, List
 from datetime import date
+
+# Esquema para ítem de pedido
+
+class OrderItemBase(BaseModel):
+    description: str
+    quantity: int = 1
+    due_date: Optional[date] = None
+
+class OrderItemCreate(OrderItemBase):
+    pass
+
+class OrderItemOut(OrderItemBase):
+    id: int
 
 class OrderBase(BaseModel):
     client_name: str
@@ -10,6 +24,30 @@ class OrderBase(BaseModel):
     status: Optional[str] = "recibido"
     delivery_method: Literal["retiro", "despacho"]
     due_date: Optional[date] = None
+    items: List[OrderItemCreate] = []
+
+
+# Esquema para ítem de pedido
+class OrderItemBase(BaseModel):
+    description: str
+    quantity: int = 1
+    due_date: Optional[date] = None
+
+class OrderItemCreate(OrderItemBase):
+    pass
+
+class OrderItemOut(OrderItemBase):
+    id: int
+
+
+class OrderBase(BaseModel):
+    client_name: str
+    title: str
+    description: Optional[str] = None
+    status: Optional[str] = "recibido"
+    delivery_method: Literal["retiro", "despacho"]
+    due_date: Optional[date] = None
+    items: List[OrderItemCreate] = []
 
     # Limpia espacios
     @field_validator("client_name", "title", "description", mode="before")
@@ -56,6 +94,7 @@ class OrderOut(OrderBase):
     id: int
     code: str
     status: str  # en la respuesta lo exigimos no-nulo
+    items: List[OrderItemOut] = []
 
     # Pydantic v2: usa model_config en lugar de Config
     model_config = ConfigDict(from_attributes=True)

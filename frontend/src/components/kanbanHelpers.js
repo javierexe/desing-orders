@@ -1,0 +1,37 @@
+// frontend/src/components/kanbanHelpers.js
+
+export const normalizeStatus = (s = "") =>
+  s.toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu, "").replace(/\s+/g, "_");
+
+export const toId = (v) => String(v);
+
+export function findContainerOf(id, state) {
+  for (const key of Object.keys(state)) {
+    if ((state[key] || []).includes(id)) return key;
+  }
+  if (state[id]) return id;
+  return null;
+}
+
+export function groupOrdersByStatus(orders, columns) {
+  const grouped = Object.fromEntries(columns.map((c) => [c.key, []]));
+  // Agrupar pedidos por columna
+  for (const o of orders) {
+    const id = toId(o.code);
+    const key = normalizeStatus(o.status);
+    if (grouped[key]) grouped[key].push(o);
+  }
+  // Ordenar por fecha de entrega ascendente y devolver solo los IDs
+  for (const key of Object.keys(grouped)) {
+    grouped[key] = grouped[key]
+      .sort((a, b) => {
+        // Si no hay fecha, poner al final
+        if (!a.due_date && !b.due_date) return 0;
+        if (!a.due_date) return 1;
+        if (!b.due_date) return -1;
+        return new Date(a.due_date) - new Date(b.due_date);
+      })
+      .map((o) => toId(o.code));
+  }
+  return grouped;
+}

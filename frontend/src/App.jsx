@@ -34,6 +34,7 @@ function AppInner() {
 
   // STATE
   const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [showNew, setShowNew] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
   const [query, setQuery] = useState("");
@@ -45,15 +46,30 @@ function AppInner() {
   // DATA
   useEffect(() => { fetchOrders(); }, []);
   async function fetchOrders() {
-    const data = await api.listOrders();
-    setOrders(data);
+    setLoading(true);
+    try {
+      const data = await api.listOrders();
+      setOrders(data);
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function handleChangeStatus(code, status) {
     // actualización optimista
     setOrders(prev => prev.map(o => o.code === code ? { ...o, status } : o));
-    try { await api.updateStatus(code, status); }
-    catch (err) { console.error(err); await fetchOrders(); }
+    // No activar loading para evitar spinner tras drag & drop
+    try {
+      await api.updateOrder(code, { status });
+      // Refresca pedidos en background, sin mostrar spinner
+      const data = await api.listOrders();
+      setOrders(data);
+    } catch (err) {
+      console.error("❌ Error en handleChangeStatus:", err);
+      const data = await api.listOrders();
+      setOrders(data);
+      showToast("No se pudo actualizar el estado", "error");
+    }
   }
 
   function showToast(msg, type = "success") {
@@ -76,6 +92,18 @@ function AppInner() {
     else if (p === "dashboard") navigate("/dashboard");
   };
 
+   // ✅ nuevo: eliminar
+  async function handleDelete(order) {
+    try {
+      await api.deleteOrder(order.code);
+      setOrders(prev => prev.filter(o => o.code !== order.code));
+      showToast(`Pedido ${order.code} eliminado`, "success");
+    } catch (err) {
+      console.error(err);
+      showToast("No se pudo eliminar el pedido", "error");
+    }
+  }
+
   return (
     <>
       {toast && (
@@ -83,11 +111,9 @@ function AppInner() {
           {toast.msg}
         </div>
       )}
-
       <Routes>
         {/* Redirección raíz a Pedidos */}
         <Route path="/" element={<Navigate to="/pedidos" replace />} />
-
         <Route
           path="/dashboard"
           element={
@@ -96,7 +122,6 @@ function AppInner() {
             </Layout>
           }
         />
-
         <Route
           path="/pedidos"
           element={
@@ -128,51 +153,45 @@ function AppInner() {
                   </button>
                 )}
               </div>
-
               {/* Kanban */}
               <section className="mt-0">
                 <Kanban
                   orders={filtered}
+                  loading={loading}
                   onChangeStatus={handleChangeStatus}
-                  onEditOrder={order => {
-                    setOrderToEdit(order);
-                    setShowEdit(true);
-                    setShowNew(false);
-                  }}
+                  onEditOrder={(order) => { setOrderToEdit(order); setShowEdit(true); }}
+                  onDelete={handleDelete}
                 />
               </section>
-
               {/* Modales: crear y editar */}
               <NewOrderModal
                 open={showNew}
                 onClose={() => setShowNew(false)}
                 onCreated={fetchOrders}
-                onNotify={showToast}
               />
-              <NewOrderModal
-                open={showEdit}
-                onClose={() => { setShowEdit(false); setOrderToEdit(null); }}
-                onCreated={fetchOrders}
-                order={orderToEdit}
-                editMode={true}
-                onNotify={showToast}
-              />
+              {showEdit && (
+                <NewOrderModal
+                  open={showEdit}
+                  order={orderToEdit}
+                  editMode={true}
+                  onClose={() => { setShowEdit(false); setOrderToEdit(null); }}
+                  onUpdated={fetchOrders}
+                />
+              )}
             </Layout>
           }
         />
-
-        {/* Fallback 404 → Pedidos */}
-        <Route path="*" element={<Navigate to="/pedidos" replace />} />
       </Routes>
     </>
   );
-}
-
-export default function App() {
-  return (
-    <BrowserRouter>
-      <AppInner />
-    </BrowserRouter>
-  );
-}
-
+      }
+      
+      function App() {
+        return (
+          <BrowserRouter>
+            <AppInner />
+          </BrowserRouter>
+        );
+      }
+      
+      export default App;
