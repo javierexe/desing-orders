@@ -39,16 +39,30 @@ def health():
 
 @app.get("/orders", response_model=List[schemas.OrderOut])
 def list_orders(db: Session = Depends(get_db)):
-    return db.query(models.Order).order_by(models.Order.id.desc()).all()
+    from sqlalchemy.orm import joinedload
+    return db.query(models.Order).options(joinedload(models.Order.items)).order_by(models.Order.id.desc()).all()
 
 @app.post("/orders", response_model=schemas.OrderOut, status_code=201)
 def create_order(payload: schemas.OrderCreate, db: Session = Depends(get_db)):
     # ⚠️ Ya no revisamos code, la BD lo maneja.
     # Creamos el objeto sin 'code'
-    order = models.Order(**payload.model_dump(exclude={"code"}))
+    items_data = payload.items if hasattr(payload, "items") else []
+    order = models.Order(**payload.model_dump(exclude={"code", "items"}))
     db.add(order)
     db.commit()
-    db.refresh(order)  # aquí ya viene con el code generado por la BD
+    db.refresh(order)
+
+    # Crear los ítems asociados
+    for item in items_data:
+        order_item = models.OrderItem(
+            order_id=order.id,
+            description=item.description,
+            quantity=item.quantity,
+            due_date=item.due_date
+        )
+        db.add(order_item)
+    db.commit()
+    db.refresh(order)
     return order
 
 
@@ -69,10 +83,27 @@ def update_order(
     if not data:
         return order
 
+    # Actualizar campos simples
     for field, value in data.items():
-        setattr(order, field, value)
+        if field != "items":
+            setattr(order, field, value)
 
-    db.commit()
+    # Actualizar ítems si vienen en el payload
+    if "items" in data:
+        new_items = data["items"]
+        # Eliminar ítems existentes
+        db.query(models.OrderItem).filter(models.OrderItem.order_id == order.id).delete()
+        db.commit()
+        # Agregar nuevos ítems
+        for item in new_items:
+            order_item = models.OrderItem(
+                order_id=order.id,
+                description=item["description"] if isinstance(item, dict) else item.description,
+                quantity=item["quantity"] if isinstance(item, dict) else item.quantity,
+                due_date=item.get("due_date") if isinstance(item, dict) else item.due_date
+            )
+            db.add(order_item)
+        db.commit()
 
     db.refresh(order)
     return order
