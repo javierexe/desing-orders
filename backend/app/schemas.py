@@ -1,37 +1,15 @@
 # app/schemas.py
 from pydantic import BaseModel, field_validator, ConfigDict
-
 from typing import Literal, Optional, List
 from datetime import date
 
 # Esquema para ítem de pedido
-
 class OrderItemBase(BaseModel):
     description: str
     quantity: int = 1
     due_date: Optional[date] = None
-
-class OrderItemCreate(OrderItemBase):
-    pass
-
-class OrderItemOut(OrderItemBase):
-    id: int
-
-class OrderBase(BaseModel):
-    client_name: str
-    title: str
-    description: Optional[str] = None
-    status: Optional[str] = "recibido"
-    delivery_method: Literal["retiro", "despacho"]
-    due_date: Optional[date] = None
-    items: List[OrderItemCreate] = []
-
-
-# Esquema para ítem de pedido
-class OrderItemBase(BaseModel):
-    description: str
-    quantity: int = 1
-    due_date: Optional[date] = None
+    price: int = 0  # Precio en centavos
+    paid_amount: int = 0  # Monto abonado en centavos
 
 class OrderItemCreate(OrderItemBase):
     pass
@@ -96,6 +74,9 @@ class OrderOut(OrderBase):
     code: str
     status: str  # en la respuesta lo exigimos no-nulo
     items: List[OrderItemOut] = []
+    total_price: Optional[int] = None  # Suma de precios de todos los items en centavos
+    total_paid: Optional[int] = None   # Suma de abonos de todos los items en centavos
+    pending_amount: Optional[int] = None  # Diferencia entre total_price y total_paid en centavos
 
     # Pydantic v2: usa model_config en lugar de Config
     model_config = ConfigDict(from_attributes=True)

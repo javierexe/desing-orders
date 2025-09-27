@@ -145,6 +145,27 @@ const KanbanCard = React.memo(function KanbanCard({
             </span>
           </div>
 
+          {/* Información financiera */}
+          {(order.total_price > 0 || order.total_paid > 0 || order.pending_amount > 0) && (
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+              {order.total_price > 0 && (
+                <span className="inline-flex items-center rounded-full px-2 py-0.5 bg-green-50 text-green-700 ring-1 ring-green-200">
+                  Total: {parseInt(order.total_price).toLocaleString('es-CL', { style: 'currency', currency: 'CLP' })}
+                </span>
+              )}
+              {order.total_paid > 0 && (
+                <span className="inline-flex items-center rounded-full px-2 py-0.5 bg-blue-50 text-blue-700 ring-1 ring-blue-200">
+                  Abonado: {parseInt(order.total_paid).toLocaleString('es-CL', { style: 'currency', currency: 'CLP' })}
+                </span>
+              )}
+              {order.pending_amount > 0 && (
+                <span className="inline-flex items-center rounded-full px-2 py-0.5 bg-red-50 text-red-700 ring-1 ring-red-200">
+                  Pendiente: {parseInt(order.pending_amount).toLocaleString('es-CL', { style: 'currency', currency: 'CLP' })}
+                </span>
+              )}
+            </div>
+          )}
+
           {order.description && (
             <p className="mt-2 line-clamp-2 text-xs text-slate-600">
               <strong>Nota:</strong> {order.description}
