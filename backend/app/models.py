@@ -21,8 +21,9 @@ class Order(Base):
     delivered_date = Column(Date, nullable=True)  # Fecha cuando fue entregado
     ready_date = Column(Date, nullable=True)  # Fecha cuando pasó a 'listo'
     abono_image_url = Column(String(255), nullable=True)  # URL del comprobante de abono
-
     items = relationship("OrderItem", back_populates="order", cascade="all, delete-orphan")
+    # Receipts: múltiples comprobantes asociados a la orden
+    receipts = relationship("OrderReceipt", back_populates="order", cascade="all, delete-orphan")
 
 
 class OrderItem(Base):
@@ -37,3 +38,15 @@ class OrderItem(Base):
     paid_amount = Column(Integer, nullable=False, default=0)  # Monto abonado en centavos
 
     order = relationship("Order", back_populates="items")
+
+
+class OrderReceipt(Base):
+    __tablename__ = "order_receipts"
+
+    id = Column(Integer, primary_key=True, index=True)
+    order_id = Column(Integer, ForeignKey("orders.id", ondelete="CASCADE"), nullable=False)
+    url = Column(String(255), nullable=False)
+    filename = Column(String(255), nullable=True)
+    uploaded_at = Column(Date, nullable=False)
+
+    order = relationship("Order", back_populates="receipts")
