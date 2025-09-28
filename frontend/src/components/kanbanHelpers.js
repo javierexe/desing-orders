@@ -1,7 +1,23 @@
 // frontend/src/components/kanbanHelpers.js
 
-export const normalizeStatus = (s = "") =>
-  s.toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu, "").replace(/\s+/g, "_");
+export const normalizeStatus = (s = "") => {
+  const normalized = s
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "") // quita tildes
+    .replace(/-/g, "_") // guiones a guion bajo
+    .replace(/\s+/g, "_"); // espacios a guion bajo
+
+  // Compatibilidad con valores legacy del backend: mapearlos a las claves de columna actuales
+  // Por ejemplo, antes se usaba "en_proceso" (o variantes) y ahora la columna es "produccion"
+  const LEGACY_STATUS_MAP = {
+    en_proceso: "produccion",
+    enproceso: "produccion",
+    "en-proceso": "produccion",
+  };
+
+  return LEGACY_STATUS_MAP[normalized] || normalized;
+};
 
 export const toId = (v) => String(v);
 

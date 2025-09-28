@@ -4,6 +4,7 @@ import { BrowserRouter, Routes, Route, Navigate, useNavigate } from "react-route
 import Layout from "./components/Layout.jsx";
 import Kanban from "./components/Kanban.jsx";
 import NewOrderModal from "./components/NewOrderModal.jsx";
+import PreviewModal from "./components/PreviewModal.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
 import { api } from "./lib/api.js";
 
@@ -18,8 +19,11 @@ function getKpis(orders) {
   const k = { total: orders.length, recibido: 0, en_proceso: 0, listo: 0, entregado: 0, overdue: 0, soon: 0 };
   for (const o of orders) {
     if (k[o.status] !== undefined) k[o.status] += 1;
-    if (isOverdue(o.due_date)) k.overdue += 1;
-    else if (isSoon(o.due_date)) k.soon += 1;
+    
+    // Solo contar como atrasados los pedidos que no están entregados ni cancelados
+    const isCompleted = o.status === "entregado" || o.status === "cancelado";
+    if (isOverdue(o.due_date) && !isCompleted) k.overdue += 1;
+    else if (isSoon(o.due_date) && !isCompleted) k.soon += 1;
   }
   return k;
 }
@@ -56,16 +60,16 @@ function AppInner() {
   }
 
   async function handleChangeStatus(code, status) {
-    // actualización optimista
-    setOrders(prev => prev.map(o => o.code === code ? { ...o, status } : o));
-    // No activar loading para evitar spinner tras drag & drop
     try {
-      await api.updateOrder(code, { status });
-      // Refresca pedidos en background, sin mostrar spinner
-      const data = await api.listOrders();
-      setOrders(data);
+      const updateResult = await api.updateOrder(code, { status });
+      
+      // Actualizar el pedido específico con la respuesta del servidor
+      setOrders(prev => prev.map(o => 
+        o.code === code ? { ...o, ...updateResult } : o
+      ));
     } catch (err) {
       console.error("❌ Error en handleChangeStatus:", err);
+      // En caso de error, recargar todo
       const data = await api.listOrders();
       setOrders(data);
       showToast("No se pudo actualizar el estado", "error");
@@ -106,6 +110,7 @@ function AppInner() {
 
   return (
     <>
+      {/* animations moved to CSS (src/index.css) */}
       {toast && (
         <div className={`fixed top-4 right-4 z-50 rounded-xl px-4 py-2 shadow-lg text-sm font-medium ${toast.type === "error" ? "bg-rose-100 text-rose-700" : "bg-emerald-100 text-emerald-700"}`}>
           {toast.msg}
@@ -168,6 +173,7 @@ function AppInner() {
                 open={showNew}
                 onClose={() => setShowNew(false)}
                 onCreated={fetchOrders}
+                onNotify={showToast}
               />
               {showEdit && (
                 <NewOrderModal
@@ -176,8 +182,11 @@ function AppInner() {
                   editMode={true}
                   onClose={() => { setShowEdit(false); setOrderToEdit(null); }}
                   onUpdated={fetchOrders}
+                  onNotify={showToast}
                 />
               )}
+              {/* Global preview modal reachable via CustomEvent 'open-comprobante-preview' */}
+              <PreviewModal />
             </Layout>
           }
         />

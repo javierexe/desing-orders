@@ -31,6 +31,16 @@ body {
 }
 .ios-smooth { -webkit-overflow-scrolling: touch; }
 
+/* Preview modal animations and styles */
+@keyframes desing-scale-in { from { transform: scale(.97); opacity:0 } to { transform: scale(1); opacity:1 } }
+@keyframes desing-scale-out { from { transform: scale(1); opacity:1 } to { transform: scale(.98); opacity:0 } }
+.animate-scale-in { animation: desing-scale-in 220ms cubic-bezier(.2,.9,.2,1) forwards; }
+.animate-scale-out { animation: desing-scale-out 180ms cubic-bezier(.4,.0,.2,1) forwards; }
+
+.preview-modal-shadow { box-shadow: 0 18px 50px rgba(13, 71, 161, 0.12), 0 6px 18px rgba(2,6,23,0.08); }
+.preview-close-btn-lg { padding: 0.6rem; border-radius: 9999px; }
+
+
 /* Si te sirven… */
 a { font-weight: 500; text-decoration: inherit; }
 a:hover {}

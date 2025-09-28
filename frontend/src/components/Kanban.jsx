@@ -1,6 +1,8 @@
 const BACKEND_STATUS = {
+  pre_pedido: "pre-pedido",
   recibido: "recibido",
-  en_proceso: "en_proceso", // Cambiado para que coincida con frontend
+  diseno: "diseño",
+  produccion: "producción",
   listo: "listo",
   entregado: "entregado",
   cancelado: "cancelado",
@@ -24,11 +26,13 @@ import { normalizeStatus, toId, groupOrdersByStatus } from "./kanbanHelpers";
 import { useKanbanDnD } from "./useKanbanDnD";
 
 const COLUMNS = [
-  { key: "recibido",   title: "Recibido" },
-  { key: "en_proceso", title: "En Proceso" },
-  { key: "listo",      title: "Listo" },
-  { key: "entregado",  title: "Entregado" },
-  { key: "cancelado",  title: "Cancelado" },
+  { key: "pre_pedido",   title: "Pre-pedido" },
+  { key: "recibido",     title: "Recibidos" },
+  { key: "diseno",       title: "Diseño" },
+  { key: "produccion",   title: "Producción" },
+  { key: "listo",        title: "Listos" },
+  { key: "entregado",    title: "Entregados" },
+  { key: "cancelado",    title: "Cancelados" },
 ];
 
 export default function Kanban({ orders = [], loading = false, onChangeStatus, onEditOrder, onDelete }) {
@@ -53,6 +57,12 @@ export default function Kanban({ orders = [], loading = false, onChangeStatus, o
 
   const activeOrder = orders.find((o) => toId(o.code) === toId(activeId)) || null;
 
+  // Detectar columnas colapsadas
+  // Detectar columna colapsada 'entregado' y columna 'cancelado'
+  const entregadoCol = COLUMNS.find(col => col.key === "entregado");
+  const canceladoCol = COLUMNS.find(col => col.key === "cancelado");
+  const otherCols = COLUMNS.filter(col => col.key !== "entregado" && col.key !== "cancelado");
+
   return (
     <DndContext
       sensors={sensors}
@@ -67,16 +77,38 @@ export default function Kanban({ orders = [], loading = false, onChangeStatus, o
             <LogoSpinner size={96} color="#e10600" text="Cargando pedidos..." />
           </div>
         ) : (
-          COLUMNS.map((col) => (
-            <Column
-              key={col.key}
-              col={col}
-              itemIds={columns[col.key] || []}
-              getOrderById={getOrderById}
-              onEdit={onEditOrder}
-              onDelete={onDelete}
-            />
-          ))
+          <>
+            {/* Render columnas normales (recibido, en_proceso, listo) */}
+            {otherCols.map((col) => (
+              <Column
+                key={col.key}
+                col={col}
+                itemIds={columns[col.key] || []}
+                getOrderById={getOrderById}
+                onEdit={onEditOrder}
+                onDelete={onDelete}
+              />
+            ))}
+            {/* Render columna Cancelados + apilada Entregados debajo */}
+            <div className="flex flex-col gap-3 min-w-[260px] max-w-xs">
+              <Column
+                key={canceladoCol.key}
+                col={canceladoCol}
+                itemIds={columns[canceladoCol.key] || []}
+                getOrderById={getOrderById}
+                onEdit={onEditOrder}
+                onDelete={onDelete}
+              />
+              <Column
+                key={entregadoCol.key}
+                col={entregadoCol}
+                itemIds={columns[entregadoCol.key] || []}
+                getOrderById={getOrderById}
+                onEdit={onEditOrder}
+                onDelete={onDelete}
+              />
+            </div>
+          </>
         )}
       </div>
       <DragOverlay dropAnimation={null}>

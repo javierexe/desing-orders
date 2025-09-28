@@ -1,7 +1,7 @@
 // frontend/src/components/KanbanCard.jsx
 import React from "react";
 import { isOverdue, isSoon, isThisWeek, parseLocalDateISO, humanDueLabel} from "./kanbanUtils";
-import { Calendar, Truck, Store, Pencil, GripVertical, Trash } from "lucide-react";
+import { Calendar, Truck, Store, Pencil, GripVertical, Trash, Eye } from "lucide-react";
 
 const KanbanCard = React.memo(function KanbanCard({
   order,
@@ -16,16 +16,36 @@ const KanbanCard = React.memo(function KanbanCard({
 }) {
   // --- Cálculos (dentro del componente) ---
   const due = order?.due_date || null;
-  const dueClass =
-    isOverdue(due)
-      ? "bg-rose-100 text-rose-800 ring-rose-200"
-      : isSoon(due)
-      ? "bg-amber-100 text-amber-800 ring-amber-200"
-      : isThisWeek(due)
-      ? "bg-blue-100 text-blue-800 ring-blue-200"
-      : "bg-slate-100 text-slate-700 ring-slate-200";
+  const isDelivered = order?.status === "entregado";
+  const isReady = order?.status === "listo";
+  const isCompleted = order?.status === "entregado" || order?.status === "cancelado";
+  const dueClass = isDelivered
+    ? "bg-green-100 text-green-800 ring-green-200"
+    : isReady
+    ? "bg-blue-100 text-blue-800 ring-blue-200"
+    : (isOverdue(due) && !isCompleted)
+    ? "bg-rose-100 text-rose-800 ring-rose-200"
+    : isSoon(due) && !isCompleted
+    ? "bg-amber-100 text-amber-800 ring-amber-200"
+    : isThisWeek(due) && !isCompleted
+    ? "bg-blue-100 text-blue-800 ring-blue-200"
+    : "bg-slate-100 text-slate-700 ring-slate-200";
 
-  const remainingLabel = humanDueLabel(due);
+  const deliveredDate = order?.delivered_date || null;
+  let remainingLabel;
+  if (isDelivered && deliveredDate) {
+    remainingLabel = parseLocalDateISO(deliveredDate)?.toLocaleDateString('es-CL', { year: 'numeric', month: 'short', day: 'numeric' }) || "Entregado";
+  } else if (isDelivered) {
+    remainingLabel = "Entregado";
+  } else if (order?.status === "cancelado") {
+    remainingLabel = "Cancelado";
+  } else if (isReady) {
+    // Mostrar la fecha en que el pedido pasó a 'listo'
+    const readyDate = order?.ready_date || new Date().toISOString().slice(0,10);
+    remainingLabel = `Listo desde: ${parseLocalDateISO(readyDate)?.toLocaleDateString('es-CL', { year: 'numeric', month: 'short', day: 'numeric' })}`;
+  } else {
+    remainingLabel = humanDueLabel(due);
+  }
   const dueDateLocal = parseLocalDateISO(due);
 
   const method = String(order?.delivery_method || "retiro").toLowerCase();
@@ -107,6 +127,24 @@ const KanbanCard = React.memo(function KanbanCard({
           <GripVertical className="w-4 h-4 text-slate-400" />
         </button>
       </div>
+      {/* Badge comprobante: si existe abono_image_url, mostrar un icono que abre la imagen */}
+      {order.abono_image_url && (
+        <div className="absolute right-2 bottom-2">
+          <button
+            type="button"
+            title="Ver comprobante"
+            aria-label="Ver comprobante"
+            onClick={(e) => {
+              e.stopPropagation();
+              const u = order.abono_image_url.startsWith('/api') ? order.abono_image_url : `/api${order.abono_image_url}`;
+              window.dispatchEvent(new CustomEvent('open-comprobante-preview', { detail: { url: u } }));
+            }}
+            className="inline-block"
+          >
+            <Eye className="w-5 h-5 text-sky-600" />
+          </button>
+        </div>
+      )}
 
       {/* Contenido de la card */}
       <div className="flex items-start gap-2">
@@ -124,7 +162,9 @@ const KanbanCard = React.memo(function KanbanCard({
                 title={`Fecha: ${order.due_date}`}
               >
                 <Calendar className="h-3.5 w-3.5" />
-                <span>Entrega: {remainingLabel}</span>
+                <span>
+                  {isReady ? remainingLabel : `Entrega: ${remainingLabel}`}
+                </span>
               </span>
             ) : (
               <span
@@ -144,6 +184,27 @@ const KanbanCard = React.memo(function KanbanCard({
 
             </span>
           </div>
+
+          {/* Información financiera */}
+          {(order.total_price > 0 || order.total_paid > 0 || order.pending_amount > 0) && (
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+              {order.total_price > 0 && (
+                <span className="inline-flex items-center rounded-full px-2 py-0.5 bg-green-50 text-green-700 ring-1 ring-green-200">
+                  Total: {parseInt(order.total_price).toLocaleString('es-CL', { style: 'currency', currency: 'CLP' })}
+                </span>
+              )}
+              {order.total_paid > 0 && (
+                <span className="inline-flex items-center rounded-full px-2 py-0.5 bg-blue-50 text-blue-700 ring-1 ring-blue-200">
+                  Abono: {parseInt(order.total_paid).toLocaleString('es-CL', { style: 'currency', currency: 'CLP' })}
+                </span>
+              )}
+              {order.pending_amount > 0 && (
+                <span className="inline-flex items-center rounded-full px-2 py-0.5 bg-red-50 text-red-700 ring-1 ring-red-200">
+                  Saldo: {parseInt(order.pending_amount).toLocaleString('es-CL', { style: 'currency', currency: 'CLP' })}
+                </span>
+              )}
+            </div>
+          )}
 
           {order.description && (
             <p className="mt-2 line-clamp-2 text-xs text-slate-600">
