@@ -28,6 +28,7 @@ class OrderBase(BaseModel):
     delivered_date: Optional[date] = None
     ready_date: Optional[date] = None
     items: List[OrderItemCreate] = []
+    abono_image_url: Optional[str] = None
 
     # Limpia espacios
     @field_validator("client_name", "title", "description", mode="before")
@@ -58,6 +59,7 @@ class OrderUpdate(BaseModel):
     description: Optional[str] = None
     status: Optional[str] = None  # pre-pedido|recibido|diseño|producción|listo|entregado|cancelado
     items: Optional[List[OrderItemCreate]] = None
+    abono_image_url: Optional[str] = None
 
     @field_validator("client_name", "title", "description", mode="before")
     @classmethod
@@ -79,6 +81,7 @@ class OrderOut(OrderBase):
     status: str  # pre-pedido|recibido|diseño|producción|listo|entregado|cancelado
     items: List[OrderItemOut] = []
     ready_date: Optional[date] = None
+    abono_image_url: Optional[str] = None
     total_price: Optional[int] = None  # Suma de precios de todos los items en centavos
     total_paid: Optional[int] = None   # Suma de abonos de todos los items en centavos
     pending_amount: Optional[int] = None  # Diferencia entre total_price y total_paid en centavos

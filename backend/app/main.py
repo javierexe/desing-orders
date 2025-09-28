@@ -5,13 +5,16 @@ from typing import List, Optional
 from datetime import date
 from .db import SessionLocal
 from . import models, schemas
+from .abono_image import router as abono_image_router
 import logging
+
 
 # Configurar logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = FastAPI()
+app.include_router(abono_image_router)
 
 # CORS: ajusta dominios según tu front (localhost:5173, Vercel, etc.)
 app.add_middleware(

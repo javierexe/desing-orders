@@ -20,6 +20,7 @@ class Order(Base):
     due_date = Column(Date, nullable=True)
     delivered_date = Column(Date, nullable=True)  # Fecha cuando fue entregado
     ready_date = Column(Date, nullable=True)  # Fecha cuando pasó a 'listo'
+    abono_image_url = Column(String(255), nullable=True)  # URL del comprobante de abono
 
     items = relationship("OrderItem", back_populates="order", cascade="all, delete-orphan")
 
