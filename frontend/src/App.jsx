@@ -4,6 +4,7 @@ import { BrowserRouter, Routes, Route, Navigate, useNavigate } from "react-route
 import Layout from "./components/Layout.jsx";
 import Kanban from "./components/Kanban.jsx";
 import NewOrderModal from "./components/NewOrderModal.jsx";
+import PreviewModal from "./components/PreviewModal.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
 import { api } from "./lib/api.js";
 
@@ -109,6 +110,7 @@ function AppInner() {
 
   return (
     <>
+      {/* animations moved to CSS (src/index.css) */}
       {toast && (
         <div className={`fixed top-4 right-4 z-50 rounded-xl px-4 py-2 shadow-lg text-sm font-medium ${toast.type === "error" ? "bg-rose-100 text-rose-700" : "bg-emerald-100 text-emerald-700"}`}>
           {toast.msg}
@@ -183,6 +185,8 @@ function AppInner() {
                   onNotify={showToast}
                 />
               )}
+              {/* Global preview modal reachable via CustomEvent 'open-comprobante-preview' */}
+              <PreviewModal />
             </Layout>
           }
         />

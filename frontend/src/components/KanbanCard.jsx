@@ -1,7 +1,7 @@
 // frontend/src/components/KanbanCard.jsx
 import React from "react";
 import { isOverdue, isSoon, isThisWeek, parseLocalDateISO, humanDueLabel} from "./kanbanUtils";
-import { Calendar, Truck, Store, Pencil, GripVertical, Trash } from "lucide-react";
+import { Calendar, Truck, Store, Pencil, GripVertical, Trash, Eye } from "lucide-react";
 
 const KanbanCard = React.memo(function KanbanCard({
   order,
@@ -127,6 +127,24 @@ const KanbanCard = React.memo(function KanbanCard({
           <GripVertical className="w-4 h-4 text-slate-400" />
         </button>
       </div>
+      {/* Badge comprobante: si existe abono_image_url, mostrar un icono que abre la imagen */}
+      {order.abono_image_url && (
+        <div className="absolute right-2 bottom-2">
+          <button
+            type="button"
+            title="Ver comprobante"
+            aria-label="Ver comprobante"
+            onClick={(e) => {
+              e.stopPropagation();
+              const u = order.abono_image_url.startsWith('/api') ? order.abono_image_url : `/api${order.abono_image_url}`;
+              window.dispatchEvent(new CustomEvent('open-comprobante-preview', { detail: { url: u } }));
+            }}
+            className="inline-block"
+          >
+            <Eye className="w-5 h-5 text-sky-600" />
+          </button>
+        </div>
+      )}
 
       {/* Contenido de la card */}
       <div className="flex items-start gap-2">

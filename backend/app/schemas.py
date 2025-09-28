@@ -2,6 +2,7 @@
 from pydantic import BaseModel, field_validator, ConfigDict
 from typing import Literal, Optional, List
 from datetime import date
+from datetime import datetime
 
 # Esquema para ítem de pedido
 class OrderItemBase(BaseModel):
@@ -28,6 +29,9 @@ class OrderBase(BaseModel):
     delivered_date: Optional[date] = None
     ready_date: Optional[date] = None
     items: List[OrderItemCreate] = []
+    abono_image_url: Optional[str] = None
+    # Lista de comprobantes (solo para API nueva)
+    receipts: Optional[List["OrderReceiptOut"]] = []
 
     # Limpia espacios
     @field_validator("client_name", "title", "description", mode="before")
@@ -58,6 +62,8 @@ class OrderUpdate(BaseModel):
     description: Optional[str] = None
     status: Optional[str] = None  # pre-pedido|recibido|diseño|producción|listo|entregado|cancelado
     items: Optional[List[OrderItemCreate]] = None
+    abono_image_url: Optional[str] = None
+    receipts: Optional[List["OrderReceiptCreate"]] = None
 
     @field_validator("client_name", "title", "description", mode="before")
     @classmethod
@@ -79,10 +85,27 @@ class OrderOut(OrderBase):
     status: str  # pre-pedido|recibido|diseño|producción|listo|entregado|cancelado
     items: List[OrderItemOut] = []
     ready_date: Optional[date] = None
+    abono_image_url: Optional[str] = None
+    receipts: Optional[List["OrderReceiptOut"]] = []
     total_price: Optional[int] = None  # Suma de precios de todos los items en centavos
     total_paid: Optional[int] = None   # Suma de abonos de todos los items en centavos
     pending_amount: Optional[int] = None  # Diferencia entre total_price y total_paid en centavos
 
     # Pydantic v2: usa model_config en lugar de Config
     model_config = ConfigDict(from_attributes=True)
+
+
+# Schemas para comprobantes
+class OrderReceiptBase(BaseModel):
+    url: str
+    filename: Optional[str] = None
+
+class OrderReceiptCreate(OrderReceiptBase):
+    pass
+
+class OrderReceiptOut(OrderReceiptBase):
+    id: int
+    uploaded_at: datetime
+
+OrderBase.model_rebuild()
 

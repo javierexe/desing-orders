@@ -5,13 +5,18 @@ from typing import List, Optional
 from datetime import date
 from .db import SessionLocal
 from . import models, schemas
+from .abono_image import router as abono_image_router
+from .abono_receipts import router as abono_receipts_router
 import logging
+
 
 # Configurar logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = FastAPI()
+app.include_router(abono_image_router)
+app.include_router(abono_receipts_router)
 
 # CORS: ajusta dominios según tu front (localhost:5173, Vercel, etc.)
 app.add_middleware(
@@ -66,6 +71,8 @@ def list_orders(db: Session = Depends(get_db)):
     result = []
     for order in orders:
         totals = calculate_order_totals(order)
+        # Map receipts if exist
+        receipts = [schemas.OrderReceiptOut(id=r.id, url=r.url, filename=r.filename, uploaded_at=r.uploaded_at) for r in getattr(order, "receipts", [])]
         result.append(schemas.OrderOut(
             id=order.id,
             code=order.code,
@@ -76,6 +83,7 @@ def list_orders(db: Session = Depends(get_db)):
             delivery_method=order.delivery_method,
             due_date=order.due_date,
             delivered_date=order.delivered_date,
+            abono_image_url=order.abono_image_url,
             items=[schemas.OrderItemOut(
                 id=item.id,
                 description=item.description,
@@ -84,6 +92,7 @@ def list_orders(db: Session = Depends(get_db)):
                 price=item.price,
                 paid_amount=item.paid_amount
             ) for item in order.items],
+            receipts=receipts,
             **totals
         ))
     
@@ -101,6 +110,9 @@ def create_order(payload: schemas.OrderCreate, db: Session = Depends(get_db)):
         if fechas:
             min_due = min(fechas)
     order_kwargs = payload.model_dump(exclude={"code", "items"})
+    # Normalizar abono_image_url: guardar NULL en DB si viene vacío
+    if "abono_image_url" in order_kwargs and not order_kwargs.get("abono_image_url"):
+        order_kwargs["abono_image_url"] = None
     if min_due:
         order_kwargs["due_date"] = min_due
     order = models.Order(**order_kwargs)
@@ -128,6 +140,8 @@ def create_order(payload: schemas.OrderCreate, db: Session = Depends(get_db)):
     # Calcular totales
     totals = calculate_order_totals(order)
     
+    # Map receipts
+    receipts = [schemas.OrderReceiptOut(id=r.id, url=r.url, filename=r.filename, uploaded_at=r.uploaded_at) for r in getattr(order, "receipts", [])]
     # Construir response manualmente
     return schemas.OrderOut(
         id=order.id,
@@ -139,6 +153,7 @@ def create_order(payload: schemas.OrderCreate, db: Session = Depends(get_db)):
         delivery_method=order.delivery_method,
         due_date=order.due_date,
         delivered_date=order.delivered_date,
+        abono_image_url=order.abono_image_url,
         items=[schemas.OrderItemOut(
             id=item.id,
             description=item.description,
@@ -147,6 +162,7 @@ def create_order(payload: schemas.OrderCreate, db: Session = Depends(get_db)):
             price=item.price,
             paid_amount=item.paid_amount
         ) for item in order.items],
+        receipts=receipts,
         **totals
     )
 
@@ -164,6 +180,10 @@ def update_order(
         raise HTTPException(status_code=404, detail="Pedido no encontrado")
 
     data = payload.model_dump(exclude_unset=True) if payload else {}
+
+    # Normalizar abono_image_url en actualizaciones: convertir "" a None
+    if "abono_image_url" in data and not data.get("abono_image_url"):
+        data["abono_image_url"] = None
 
     if not data:
         return order
@@ -217,6 +237,7 @@ def update_order(
     
     # Calcular totales y construir response manualmente
     totals = calculate_order_totals(order)
+    receipts = [schemas.OrderReceiptOut(id=r.id, url=r.url, filename=r.filename, uploaded_at=r.uploaded_at) for r in getattr(order, "receipts", [])]
     return schemas.OrderOut(
         id=order.id,
         code=order.code,
@@ -227,6 +248,7 @@ def update_order(
         delivery_method=order.delivery_method,
         due_date=order.due_date,
         delivered_date=order.delivered_date,
+        abono_image_url=order.abono_image_url,
         items=[schemas.OrderItemOut(
             id=item.id,
             description=item.description,
@@ -235,6 +257,7 @@ def update_order(
             price=item.price,
             paid_amount=item.paid_amount
         ) for item in order.items],
+        receipts=receipts,
         **totals
     )
 
