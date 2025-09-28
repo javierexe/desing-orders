@@ -61,6 +61,7 @@ export default function NewOrderModal({
   status: "pre-pedido"
   });
   const [items, setItems] = useState([]);
+  const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -93,7 +94,8 @@ export default function NewOrderModal({
         due_date: todayISO(),
         delivered_date: "",
         description: "",
-        status: "pre-pedido"
+  status: "pre-pedido",
+  abono_image_url: ""
       };
       setForm(blank);
       initialFormRef.current = blank;
@@ -154,14 +156,41 @@ export default function NewOrderModal({
   ...base,
   ...(dueISO ? { due_date: dueISO } : {}),
   status: normalizeStatus(form.status || "pre-pedido"),
-      items: items.map(item => ({
+  abono_image_url: form.abono_image_url || undefined,
+  items: items.map(item => ({
         description: item.description,
         due_date: normalizeDate(item.due_date),
         quantity: Number(item.quantity) || 1,
         price: Number(item.price) || 0,
         paid_amount: Number(item.paid_amount) || 0
-      }))
+  }))
     };
+
+  // Subir imagen de comprobante
+  async function handleFileChange(e) {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/orders/upload-abono-image", {
+        method: "POST",
+        body: formData,
+      });
+      if (!res.ok) {
+        const txt = await res.text();
+        throw new Error(txt || "Error al subir imagen");
+      }
+      const data = await res.json();
+      setForm((f) => ({ ...f, abono_image_url: data.url }));
+    } catch (err) {
+      console.error(err);
+      onNotify && onNotify({ type: "error", message: "Error subiendo imagen" });
+    } finally {
+      setUploading(false);
+    }
+  }
 
     try {
       let saved;
@@ -241,6 +270,22 @@ export default function NewOrderModal({
               placeholder="Acme Ltda."
             />
           </label>
+
+          <div className="text-sm">
+            <label>Comprobante de abono</label>
+            <div className="mt-1">
+              <input type="file" accept="image/*" onChange={handleFileChange} disabled={uploading} />
+            </div>
+            {uploading && <div className="text-xs text-slate-500 mt-1">Subiendo imagen…</div>}
+            {form.abono_image_url && (
+              <div className="mt-2 flex items-center gap-3">
+                <img src={form.abono_image_url} alt="comprobante" className="w-20 h-20 object-cover rounded" />
+                <button type="button" className="text-sm text-rose-600" onClick={() => setForm(f => ({ ...f, abono_image_url: "" }))}>
+                  Eliminar
+                </button>
+              </div>
+            )}
+          </div>
 
           
 
