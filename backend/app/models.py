@@ -15,7 +15,7 @@ class Order(Base):
     client_name = Column(String(200), nullable=False)
     title = Column(String(200), nullable=False)
     description = Column(Text, nullable=True)
-    status = Column(String(20), nullable=False, default="recibido")  # recibido|en_proceso|listo|entregado
+    status = Column(String(20), nullable=False, default="pre-pedido")  # pre-pedido|recibido|diseño|producción|listo|entregado|cancelado
     delivery_method = Column(String(20), nullable=False, default="retiro")
     due_date = Column(Date, nullable=True)
     delivered_date = Column(Date, nullable=True)  # Fecha cuando fue entregado

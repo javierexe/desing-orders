@@ -186,6 +186,7 @@ def update_order(
             data["delivered_date"] = None
             data["ready_date"] = None
             logger.info(f"[PATCH /orders/{code}] Limpiando delivered_date y ready_date porque status != 'entregado' ni 'listo'")
+        # Los estados pre-pedido, recibido, diseño, producción no requieren lógica especial de fechas
 
     # Actualizar campos simples
     for field, value in data.items():

@@ -1,7 +1,12 @@
 // frontend/src/components/kanbanHelpers.js
 
 export const normalizeStatus = (s = "") =>
-  s.toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu, "").replace(/\s+/g, "_");
+  s
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "") // quita tildes
+    .replace(/-/g, "_") // guiones a guion bajo
+    .replace(/\s+/g, "_"); // espacios a guion bajo
 
 export const toId = (v) => String(v);
 

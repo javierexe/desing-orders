@@ -1,6 +1,8 @@
 const BACKEND_STATUS = {
+  pre_pedido: "pre-pedido",
   recibido: "recibido",
-  en_proceso: "en_proceso", // Cambiado para que coincida con frontend
+  diseno: "diseño",
+  produccion: "producción",
   listo: "listo",
   entregado: "entregado",
   cancelado: "cancelado",
@@ -24,11 +26,13 @@ import { normalizeStatus, toId, groupOrdersByStatus } from "./kanbanHelpers";
 import { useKanbanDnD } from "./useKanbanDnD";
 
 const COLUMNS = [
-  { key: "recibido",   title: "Recibidos" },
-  { key: "en_proceso", title: "En Proceso" },
-  { key: "listo",      title: "Listos" },
-  { key: "entregado",  title: "Entregados" },
-  { key: "cancelado",  title: "Cancelados" },
+  { key: "pre_pedido",   title: "Pre-pedido" },
+  { key: "recibido",     title: "Recibidos" },
+  { key: "diseno",       title: "Diseño" },
+  { key: "produccion",   title: "Producción" },
+  { key: "listo",        title: "Listos" },
+  { key: "entregado",    title: "Entregados" },
+  { key: "cancelado",    title: "Cancelados" },
 ];
 
 export default function Kanban({ orders = [], loading = false, onChangeStatus, onEditOrder, onDelete }) {

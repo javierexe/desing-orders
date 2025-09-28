@@ -22,7 +22,7 @@ class OrderBase(BaseModel):
     client_name: str
     title: str
     description: Optional[str] = None
-    status: Optional[str] = "recibido"
+    status: Optional[str] = "pre-pedido"  # pre-pedido|recibido|diseño|producción|listo|entregado|cancelado
     delivery_method: Literal["retiro", "despacho"]
     due_date: Optional[date] = None
     delivered_date: Optional[date] = None
@@ -56,7 +56,7 @@ class OrderUpdate(BaseModel):
     delivered_date: Optional[date] = None
     ready_date: Optional[date] = None
     description: Optional[str] = None
-    status: Optional[str] = None
+    status: Optional[str] = None  # pre-pedido|recibido|diseño|producción|listo|entregado|cancelado
     items: Optional[List[OrderItemCreate]] = None
 
     @field_validator("client_name", "title", "description", mode="before")
@@ -76,7 +76,7 @@ class OrderUpdate(BaseModel):
 class OrderOut(OrderBase):
     id: int
     code: str
-    status: str  # en la respuesta lo exigimos no-nulo
+    status: str  # pre-pedido|recibido|diseño|producción|listo|entregado|cancelado
     items: List[OrderItemOut] = []
     ready_date: Optional[date] = None
     total_price: Optional[int] = None  # Suma de precios de todos los items en centavos

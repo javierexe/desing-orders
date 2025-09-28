@@ -52,13 +52,13 @@ export default function NewOrderModal({
   editMode = false
 }) {
   const [form, setForm] = useState({
-    client_name: "",
-    title: "",
-    delivery_method: "retiro",
-    due_date: "",
-    delivered_date: "",
-    description: "",
-    status: "recibido"
+  client_name: "",
+  title: "",
+  delivery_method: "retiro",
+  due_date: "",
+  delivered_date: "",
+  description: "",
+  status: "pre-pedido"
   });
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -80,7 +80,7 @@ export default function NewOrderModal({
         due_date: normDate(order.due_date),
         delivered_date: normDate(order.delivered_date),
         description: order.description ?? "",
-        status: order.status ?? "recibido"
+        status: order.status ?? "pre-pedido"
       };
       setForm(next);
       initialFormRef.current = next;
@@ -93,7 +93,7 @@ export default function NewOrderModal({
         due_date: todayISO(),
         delivered_date: "",
         description: "",
-        status: "recibido"
+        status: "pre-pedido"
       };
       setForm(blank);
       initialFormRef.current = blank;
@@ -151,9 +151,9 @@ export default function NewOrderModal({
     const base = buildOrderPayload(form);
     const dueISO = normalizeDate(form.due_date);
     const payload = {
-      ...base,
-      ...(dueISO ? { due_date: dueISO } : {}),
-      status: normalizeStatus(form.status || "recibido"),
+  ...base,
+  ...(dueISO ? { due_date: dueISO } : {}),
+  status: normalizeStatus(form.status || "pre-pedido"),
       items: items.map(item => ({
         description: item.description,
         due_date: normalizeDate(item.due_date),
