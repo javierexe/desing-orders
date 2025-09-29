@@ -65,7 +65,7 @@ function OrderItemsEditor({ items, handleAdd, handleDelete, handleChange }) {
                   const value = e.target.value.replace(/[^0-9]/g, '');
                   handleChange(idx, "price", parseInt(value) || 0);
                 }}
-                className="mt-1 w-full rounded-xl border border-slate-300 pl-6 pr-3 py-2 text-right font-mono"
+                className="mt-1 w-full rounded-xl border border-slate-300 pl-6 pr-3 py-2 text-right font-mono text-sm"
                 placeholder="0"
               />
             </div>
@@ -84,7 +84,7 @@ function OrderItemsEditor({ items, handleAdd, handleDelete, handleChange }) {
                     handleChange(idx, "paid_amount", numValue);
                   }
                 }}
-                className="mt-1 w-full rounded-xl border border-slate-300 pl-6 pr-3 py-2 text-right font-mono"
+                className="mt-1 w-full rounded-xl border border-slate-300 pl-6 pr-3 py-2 text-right font-mono text-sm"
                 placeholder="0"
                 title={`Máximo: ${(parseInt(item.price) || 0).toLocaleString('es-CL', { style: 'currency', currency: 'CLP' })}`}
               />

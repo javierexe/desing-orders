@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from "react";
-import { Trash, ExternalLink, Eye } from "lucide-react";
+import { Trash, ExternalLink, Eye, Upload, CloudUpload, Check, Clock, Tag, CheckCircle, Calculator, Clipboard, File } from "lucide-react";
 import OrderItemsEditor from "./OrderItemsEditor";
 import { buildOrderPayload, HttpError } from "../utils/http";
 import { api } from "../lib/api";
@@ -112,6 +112,9 @@ export default function NewOrderModal({
   const [imgLoadError, setImgLoadError] = useState(false);
   const [deletingAbono, setDeletingAbono] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [isDragOver, setIsDragOver] = useState(false);
+  const [toastMessage, setToastMessage] = useState(null);
+  const dropzoneRef = useRef(null);
 
   // Guardamos el estado inicial para dirty-check
   const initialFormRef = useRef(form);
@@ -165,6 +168,32 @@ export default function NewOrderModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, editMode, order?.code]);
 
+  // Listener global para paste como fallback
+  useEffect(() => {
+    if (!open) return;
+
+    const handleGlobalPaste = (e) => {
+      // Solo actuar si el modal está abierto y no hay un input con focus
+      const activeElement = document.activeElement;
+      const isInputFocused = activeElement && (
+        activeElement.tagName === 'INPUT' || 
+        activeElement.tagName === 'TEXTAREA' ||
+        activeElement.contentEditable === 'true'
+      );
+
+      if (!isInputFocused || activeElement === dropzoneRef.current) {
+        console.log('Global paste event detected, processing...');
+        handlePaste(e);
+      }
+    };
+
+    document.addEventListener('paste', handleGlobalPaste);
+
+    return () => {
+      document.removeEventListener('paste', handleGlobalPaste);
+    };
+  }, [open]);
+
   // Cuando se agregan o cambian ítems, ajustar la fecha compromiso del pedido
   useEffect(() => {
     if (items.length > 0) {
@@ -214,74 +243,11 @@ export default function NewOrderModal({
   async function handleFileChange(e) {
     const files = e.target.files && Array.from(e.target.files);
     if (!files || files.length === 0) return;
-    setUploading(true);
-    try {
-      // Subir todos en paralelo
-      const uploads = files.map(async (file) => {
-        const formData = new FormData();
-        formData.append("file", file);
-        const res = await fetch("/api/upload-abono-image", {
-          method: "POST",
-          body: formData,
-        });
-        if (!res.ok) {
-          const txt = await res.text();
-          throw new Error(txt || "Error al subir imagen");
-        }
-        const data = await res.json();
-        // El backend ahora devuelve { url, storage_key, storage_provider }
-        // Si es de Supabase, usar la URL directamente; si es local, agregar /api
-        const url = data.storage_provider === "supabase" ? data.url : 
-                   (data.url.startsWith("/api") ? data.url : `/api${data.url}`);
-        return { url, storage_key: data.storage_key, filename: getFileNameFromUrl(data.url) };
-      });
-
-      const results = await Promise.all(uploads);
-      // Map results to objects; if in editMode and order.code, persist each as receipt in backend
-      if (editMode && order?.code) {
-        // persist each to backend
-        const persisted = [];
-        for (const item of results) {
-          try {
-            const res = await fetch(`/api/orders/${order.code}/receipts`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ 
-                url: item.url, 
-                filename: item.filename,
-                storage_key: item.storage_key 
-              })
-            });
-            if (res.ok) {
-              const data = await res.json();
-              persisted.push({ 
-                id: data.id, 
-                url: data.url, 
-                filename: data.filename, 
-                storage_key: data.storage_key,
-                uploaded_at: data.uploaded_at 
-              });
-            } else {
-              // fallback to local-only
-              persisted.push(item);
-            }
-          } catch (err) {
-            console.error('Persisting receipt failed', err);
-            persisted.push(item);
-          }
-        }
-        setForm((f) => ({ ...f, abono_images: dedupeReceipts([ ...(f.abono_images || []), ...persisted ]) }));
-      } else {
-        setForm((f) => ({ ...f, abono_images: dedupeReceipts([ ...(f.abono_images || []), ...results ]) }));
-      }
-    } catch (err) {
-      console.error(err);
-      onNotify && onNotify("Error subiendo imagen(es)", "error");
-    } finally {
-      setUploading(false);
-      // limpiar input file (para permitir re-subir el mismo archivo si se desea)
-      try { e.target.value = null; } catch (_) { /* ignore */ }
-    }
+    
+    await processFiles(files);
+    
+    // Limpiar input file (para permitir re-subir el mismo archivo si se desea)
+    try { e.target.value = null; } catch (_) { /* ignore */ }
   }
 
   // Eliminar un comprobante por índice
@@ -334,6 +300,174 @@ export default function NewOrderModal({
       }
     }
   }
+
+  // Funciones para drag & drop y paste
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    setIsDragOver(true);
+  };
+
+  const handleDragEnter = (e) => {
+    e.preventDefault();
+    setIsDragOver(true);
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    setIsDragOver(false);
+  };
+
+  const handleDrop = async (e) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    
+    const files = Array.from(e.dataTransfer.files).filter(file => 
+      file.type.startsWith('image/')
+    );
+    
+    if (files.length === 0) {
+      showToast('❌ Solo se permiten archivos de imagen', 'error');
+      return;
+    }
+
+    await processFiles(files);
+  };
+
+  const handleKeyDown = (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'v') {
+      console.log('Ctrl+V detected, focus on dropzone');
+      // Asegurar que el elemento tenga focus para recibir el paste
+      if (dropzoneRef.current) {
+        dropzoneRef.current.focus();
+      }
+    }
+  };
+
+  const handlePaste = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    console.log('Paste event triggered:', e);
+    
+    const items = e.clipboardData?.items;
+    
+    if (!items) {
+      console.log('No clipboard items found');
+      return;
+    }
+    
+    console.log('Clipboard items:', Array.from(items).map(item => ({ type: item.type, kind: item.kind })));
+    
+    const imageFiles = [];
+    
+    for (let item of items) {
+      console.log('Processing item:', item.type, item.kind);
+      if (item.type.startsWith('image/')) {
+        const file = item.getAsFile();
+        if (file) {
+          console.log('Found image file:', file.name, file.type, file.size);
+          // Generar nombre descriptivo
+          const timestamp = new Date().toISOString().slice(0, 19).replace(/[:-]/g, '');
+          const extension = file.type.split('/')[1] || 'png';
+          const fileName = `pasted_image_${timestamp}.${extension}`;
+          
+          // Crear File object con nombre personalizado
+          const namedFile = new File([file], fileName, { type: file.type });
+          imageFiles.push(namedFile);
+        }
+      }
+    }
+    
+    if (imageFiles.length > 0) {
+      console.log('Processing', imageFiles.length, 'pasted images');
+      showToast(`📋 ${imageFiles.length} imagen(es) pegada(s) desde portapapeles`, 'success');
+      await processFiles(imageFiles);
+    } else {
+      console.log('No images found in clipboard');
+      showToast('❌ No se encontraron imágenes en el portapapeles', 'error');
+    }
+  };
+
+  // Función común para procesar archivos (desde drag & drop, paste o input)
+  const processFiles = async (files) => {
+    if (!files || files.length === 0) return;
+    
+    setUploading(true);
+    try {
+      // Subir todos en paralelo
+      const uploads = files.map(async (file) => {
+        const formData = new FormData();
+        formData.append("file", file);
+        const res = await fetch("/api/upload-abono-image", {
+          method: "POST",
+          body: formData,
+        });
+        if (!res.ok) {
+          const txt = await res.text();
+          throw new Error(txt || "Error al subir imagen");
+        }
+        const data = await res.json();
+        // El backend ahora devuelve { url, storage_key, storage_provider }
+        const url = data.storage_provider === "supabase" ? data.url : 
+                   (data.url.startsWith("/api") ? data.url : `/api${data.url}`);
+        return { url, storage_key: data.storage_key, filename: getFileNameFromUrl(data.url) };
+      });
+
+      const results = await Promise.all(uploads);
+      
+      // Si estamos en modo edición, persistir en backend
+      if (editMode && order?.code) {
+        const persisted = [];
+        for (const item of results) {
+          try {
+            const res = await fetch(`/api/orders/${order.code}/receipts`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ 
+                url: item.url, 
+                filename: item.filename,
+                storage_key: item.storage_key 
+              })
+            });
+            if (res.ok) {
+              const data = await res.json();
+              persisted.push({ 
+                id: data.id, 
+                url: data.url, 
+                filename: data.filename, 
+                storage_key: data.storage_key,
+                uploaded_at: data.uploaded_at 
+              });
+            } else {
+              persisted.push(item);
+            }
+          } catch (err) {
+            console.error('Error persistiendo receipt:', err);
+            persisted.push(item);
+          }
+        }
+        setForm((f) => ({ ...f, abono_images: dedupeReceipts([ ...(f.abono_images || []), ...persisted ]) }));
+      } else {
+        setForm((f) => ({ ...f, abono_images: dedupeReceipts([ ...(f.abono_images || []), ...results ]) }));
+      }
+      
+      showToast(`✅ ${results.length} archivo(s) subido(s) correctamente`, 'success');
+    } catch (err) {
+      console.error(err);
+      showToast('❌ Error al subir archivos', 'error');
+      onNotify && onNotify("Error subiendo imagen(es)", "error");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  // Toast notifications
+  const showToast = (message, type = 'success') => {
+    setToastMessage({ message, type });
+    setTimeout(() => {
+      setToastMessage(null);
+    }, 3000);
+  };
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -533,47 +667,131 @@ export default function NewOrderModal({
             />
           </div>
 
-          {/* Comprobante de abono: moved here so it appears under items */}
-          <div className="col-span-full text-sm">
-            <label>Comprobante de abono</label>
-            <div className="mt-1">
-              <input type="file" accept="image/*" onChange={handleFileChange} disabled={uploading} multiple />
+          {/* Comprobantes con Drag & Drop + Paste */}
+          <div className="col-span-full">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+              <CloudUpload className="w-5 h-5 mr-2 text-blue-600" />
+              Comprobantes de abono
+            </h3>
+            
+            {/* Zona de drag & drop + paste */}
+            <div 
+              ref={dropzoneRef}
+              className={`border-2 border-dashed rounded-lg p-6 text-center transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                isDragOver 
+                  ? 'border-blue-400 bg-blue-50' 
+                  : uploading 
+                  ? 'border-gray-200 bg-gray-50' 
+                  : 'border-gray-300 hover:border-blue-400 hover:bg-blue-50/50'
+              }`}
+              tabIndex={0}
+              onClick={() => !uploading && document.getElementById('file-input').click()}
+              onKeyDown={handleKeyDown}
+              onPaste={handlePaste}
+              onDragOver={handleDragOver}
+              onDragEnter={handleDragEnter}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+            >
+              <input 
+                id="file-input"
+                type="file" 
+                accept="image/*" 
+                onChange={handleFileChange} 
+                disabled={uploading} 
+                multiple 
+                className="hidden"
+              />
+              
+              {uploading ? (
+                <div className="flex flex-col items-center">
+                  <Upload className="w-6 h-6 text-blue-500 animate-bounce mb-3" />
+                  <p className="text-base font-medium text-gray-900 mb-1">Subiendo archivos...</p>
+                  <p className="text-sm text-gray-500">Por favor espera</p>
+                </div>
+              ) : (
+                <>
+                  <CloudUpload className="w-8 h-8 text-gray-400 mx-auto mb-3 transition-colors group-hover:text-blue-500" />
+                  <div>
+                    <p className="text-base font-medium text-gray-900 mb-2">
+                      Arrastra archivos aquí, 
+                      <span className="text-blue-600 hover:text-blue-500 underline">explora</span> o 
+                      <span className="text-green-600 font-semibold">pega desde portapapeles</span>
+                    </p>
+                    <p className="text-sm text-gray-500 mb-2">
+                      PNG, JPG hasta 5MB • Múltiples archivos • Screenshots
+                    </p>
+                    
+                    {/* Instrucciones de teclado */}
+                    <div className="flex items-center justify-center space-x-4 text-xs text-gray-400">
+                      <div className="flex items-center space-x-1">
+                        <kbd className="px-2 py-1 bg-gray-100 rounded font-mono text-gray-600">Ctrl</kbd>
+                        <span>+</span>
+                        <kbd className="px-2 py-1 bg-gray-100 rounded font-mono text-gray-600">V</kbd>
+                        <span>para pegar</span>
+                      </div>
+                      <div className="w-1 h-1 bg-gray-300 rounded-full"></div>
+                      <div className="flex items-center space-x-1">
+                        <Clipboard className="w-3 h-3" />
+                        <span>Click para seleccionar</span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Indicador dinámico de paste */}
+                  <div className="mt-4 text-sm text-green-600 opacity-0 focus-within:opacity-100 transition-all duration-300">
+                    <div className="flex items-center justify-center space-x-2 bg-green-50 border border-green-200 rounded-lg py-2 px-4 inline-flex">
+                      <Clipboard className="w-4 h-4" />
+                      <span className="font-medium">Listo para pegar • Presiona Ctrl+V</span>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
-            {uploading && <div className="text-xs text-slate-500 mt-1">Subiendo imagen…</div>}
 
+            {/* Archivos subidos */}
             {form.abono_images && form.abono_images.length > 0 && (
-              <div className="mt-2 space-y-2">
+              <div className="mt-4 space-y-2">
                 {form.abono_images.map((u, idx) => (
-                  <div key={u.id ?? u.url ?? idx} className="flex items-center gap-3">
-                    <div className="flex-1 text-xs text-slate-700 truncate" title={u.filename || getFileNameFromUrl(u.url)}>{u.filename || getFileNameFromUrl(u.url)}</div>
-                    <div className="w-10 h-10 rounded bg-slate-100 flex items-center justify-center relative group">
-                      <button
+                  <div key={u.id ?? u.url ?? idx} className="flex items-center space-x-3 p-3 bg-green-50 border border-green-200 rounded-lg hover:bg-green-100 transition-colors">
+                    <div className="flex-shrink-0">
+                      <File className="w-6 h-6 text-green-600" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900 truncate" title={u.filename || getFileNameFromUrl(u.url)}>
+                        {u.filename || getFileNameFromUrl(u.url)}
+                      </p>
+                      <div className="flex items-center space-x-4 mt-1">
+                        <p className="text-xs text-gray-500">
+                          {u.uploaded_at ? `Subido el ${new Date(u.uploaded_at).toLocaleDateString()}` : 'Archivo local'}
+                        </p>
+                        <div className="flex items-center text-xs text-green-600">
+                          <CloudUpload className="w-3 h-3 mr-1" />
+                          <span>{u.storage_key ? 'Supabase Storage' : 'Local Storage'}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex space-x-2">
+                      <button 
                         type="button"
-                        aria-label={`Ver comprobante ${idx + 1}`}
-                        title={`Ver comprobante ${idx + 1}`}
-                        className="p-2"
+                        className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-100 rounded-md transition-colors"
                         onClick={(e) => {
                           e.stopPropagation();
                           const url = (u.url || u).startsWith('/api') ? (u.url || u) : `/api${(u.url || u)}`;
                           window.dispatchEvent(new CustomEvent('open-comprobante-preview', { detail: { url } }));
                         }}
+                        title="Ver comprobante"
                       >
-                        <Eye className="w-5 h-5 text-slate-700" />
+                        <Eye className="w-4 h-4" />
                       </button>
-                      <div className="hidden group-hover:block absolute left-0 -top-56 w-72 h-52 bg-white border border-slate-200 rounded shadow-lg overflow-hidden z-50 transform scale-95 opacity-0 group-hover:scale-100 group-hover:opacity-100 transition-all duration-150">
-                        <img src={encodeURI(normalizeServerUrl(u.url || u))} alt={`preview ${idx + 1}`} className="w-full h-full object-contain bg-white" />
-                      </div>
-                    </div>
-                    <div className="flex gap-2 items-center">
-                      <button
+                      <button 
                         type="button"
-                        aria-label={`Eliminar comprobante ${idx + 1}`}
-                        title={`Eliminar comprobante ${idx + 1}`}
-                        className="p-1 rounded hover:bg-rose-50"
+                        className="p-2 text-red-600 hover:text-red-800 hover:bg-red-100 rounded-md transition-colors"
                         onClick={() => handleDeleteAbono(idx)}
                         disabled={deletingAbono}
+                        title="Eliminar comprobante"
                       >
-                        <Trash className="w-4 h-4 text-rose-600" />
+                        <Trash className="w-4 h-4" />
                       </button>
                     </div>
                   </div>
@@ -582,37 +800,52 @@ export default function NewOrderModal({
             )}
 
             {imgLoadError && (
-              <div className="text-xs text-rose-600 mt-1">No se pudo cargar la miniatura. <button type="button" className="underline text-sky-600 inline-flex items-center" onClick={() => {
-                const u = (form.abono_images && form.abono_images.length) ? (form.abono_images[0]?.url || form.abono_images[0]) : "";
-                const url = u && u.startsWith('/api') ? u : `/api${u}`;
-                window.dispatchEvent(new CustomEvent('open-comprobante-preview', { detail: { url } }));
-              }}><ExternalLink className="w-3 h-3 mr-1" />Abrir imagen</button></div>
+              <div className="mt-3 text-xs text-rose-600">No se pudo cargar la miniatura. 
+                <button type="button" className="underline text-sky-600 inline-flex items-center ml-1" onClick={() => {
+                  const u = (form.abono_images && form.abono_images.length) ? (form.abono_images[0]?.url || form.abono_images[0]) : "";
+                  const url = u && u.startsWith('/api') ? u : `/api${u}`;
+                  window.dispatchEvent(new CustomEvent('open-comprobante-preview', { detail: { url } }));
+                }}>
+                  <ExternalLink className="w-3 h-3 mr-1" />Abrir imagen
+                </button>
+              </div>
             )}
-            {/* preview handled by global PreviewModal via event */}
           </div>
 
-          {/* Resumen de totales */}
+          {/* Resumen financiero destacado */}
           {items.length > 0 && (
-            <div className="col-span-full bg-slate-50 rounded-xl p-4 space-y-2">
-              <h4 className="font-semibold text-sm text-slate-700">Resumen de totales</h4>
-              <div className="grid grid-cols-3 gap-4 text-sm">
-                <div>
-                  <span className="text-slate-600">Total precio:</span>
-                  <div className="font-semibold text-green-700">
-                    {items.reduce((sum, item) => sum + (parseInt(item.price) || 0), 0).toLocaleString('es-CL', { style: 'currency', currency: 'CLP' })}
+            <div className="col-span-full bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-200">
+              <h3 className="text-lg font-semibold text-gray-900 mb-6 flex items-center">
+                <Calculator className="w-5 h-5 mr-2 text-blue-600" />
+                Resumen financiero
+              </h3>
+              <div className="grid grid-cols-3 gap-6">
+                <div className="text-center">
+                  <div className="bg-white rounded-lg p-4 shadow-sm">
+                    <Tag className="w-6 h-6 text-green-500 mx-auto mb-2" />
+                    <p className="text-sm text-gray-600 mb-1">Total precio</p>
+                    <p className="text-2xl font-bold text-green-600">
+                      {items.reduce((sum, item) => sum + (parseInt(item.price) || 0), 0).toLocaleString('es-CL', { style: 'currency', currency: 'CLP' })}
+                    </p>
                   </div>
                 </div>
-                <div>
-                  <span className="text-slate-600">Total abonado:</span>
-                  <div className="font-semibold text-blue-700">
-                    {items.reduce((sum, item) => sum + (parseInt(item.paid_amount) || 0), 0).toLocaleString('es-CL', { style: 'currency', currency: 'CLP' })}
+                <div className="text-center">
+                  <div className="bg-white rounded-lg p-4 shadow-sm">
+                    <CheckCircle className="w-6 h-6 text-blue-500 mx-auto mb-2" />
+                    <p className="text-sm text-gray-600 mb-1">Total abonado</p>
+                    <p className="text-2xl font-bold text-blue-600">
+                      {items.reduce((sum, item) => sum + (parseInt(item.paid_amount) || 0), 0).toLocaleString('es-CL', { style: 'currency', currency: 'CLP' })}
+                    </p>
                   </div>
                 </div>
-                <div>
-                  <span className="text-slate-600">Pendiente:</span>
-                  <div className="font-semibold text-red-700">
-                    {(items.reduce((sum, item) => sum + (parseInt(item.price) || 0), 0) - 
-                       items.reduce((sum, item) => sum + (parseInt(item.paid_amount) || 0), 0)).toLocaleString('es-CL', { style: 'currency', currency: 'CLP' })}
+                <div className="text-center">
+                  <div className="bg-white rounded-lg p-4 shadow-sm">
+                    <Clock className="w-6 h-6 text-red-500 mx-auto mb-2" />
+                    <p className="text-sm text-gray-600 mb-1">Pendiente</p>
+                    <p className="text-2xl font-bold text-red-600">
+                      {(items.reduce((sum, item) => sum + (parseInt(item.price) || 0), 0) - 
+                         items.reduce((sum, item) => sum + (parseInt(item.paid_amount) || 0), 0)).toLocaleString('es-CL', { style: 'currency', currency: 'CLP' })}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -668,6 +901,26 @@ export default function NewOrderModal({
           </div>
         </form>
       </div>
+
+      {/* Toast notification */}
+      {toastMessage && (
+        <div className="fixed top-4 right-4 z-50 animate-slide-in-right">
+          <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-4 max-w-sm">
+            <div className="flex items-center space-x-3">
+              <div className="flex-shrink-0">
+                {toastMessage.type === 'success' ? (
+                  <CheckCircle className="w-5 h-5 text-green-500" />
+                ) : (
+                  <ExternalLink className="w-5 h-5 text-red-500" />
+                )}
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-900">{toastMessage.message}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
