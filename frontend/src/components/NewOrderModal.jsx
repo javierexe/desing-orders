@@ -230,8 +230,9 @@ export default function NewOrderModal({
         }
         const data = await res.json();
         // El backend ahora devuelve { url, storage_key, storage_provider }
-        const url = data.url && data.url.startsWith("/api") ? data.url : 
-                   (data.storage_provider === "supabase" ? data.url : `/api${data.url}`);
+        // Si es de Supabase, usar la URL directamente; si es local, agregar /api
+        const url = data.storage_provider === "supabase" ? data.url : 
+                   (data.url.startsWith("/api") ? data.url : `/api${data.url}`);
         return { url, storage_key: data.storage_key, filename: getFileNameFromUrl(data.url) };
       });
 

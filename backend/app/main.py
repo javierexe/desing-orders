@@ -72,7 +72,7 @@ def list_orders(db: Session = Depends(get_db)):
     for order in orders:
         totals = calculate_order_totals(order)
         # Map receipts if exist
-        receipts = [schemas.OrderReceiptOut(id=r.id, url=r.url, filename=r.filename, uploaded_at=r.uploaded_at) for r in getattr(order, "receipts", [])]
+        receipts = [schemas.OrderReceiptOut(id=r.id, url=r.url, filename=r.filename, storage_key=r.storage_key, uploaded_at=r.uploaded_at) for r in getattr(order, "receipts", [])]
         result.append(schemas.OrderOut(
             id=order.id,
             code=order.code,
