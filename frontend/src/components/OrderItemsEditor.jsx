@@ -18,18 +18,20 @@ function OrderItemsEditor({ items, handleAdd, handleDelete, handleChange }) {
         <button type="button" onClick={handleAdd} className="rounded-xl bg-sky-100 px-3 py-1 text-sm font-medium text-sky-700 hover:bg-sky-200">+ Agregar ítem</button>
       </div>
       {items.length === 0 && <div className="text-sm text-slate-500">Sin ítems aún.</div>}
-  {items.length > 0 && (
-        <div className="grid grid-cols-[2fr_0.7fr_1fr_1fr_1.2fr_0.5fr] gap-2 items-center text-xs font-semibold text-slate-600 mb-1">
-          <div>Descripción</div>
-          <div>Cant.</div>
-          <div>Precio</div>
-          <div>Abono</div>
-          <div>Fecha entrega</div>
-          <div>Eliminar</div>
-        </div>
+      {items.length > 0 && (
+        <>
+          <div className="grid grid-cols-[2fr_0.7fr_1fr_1fr_1.2fr_0.5fr] gap-1 items-center text-xs font-semibold text-slate-600 mb-1">
+            <div>Descripción</div>
+            <div>Cant.</div>
+            <div>Precio</div>
+            <div>Abono</div>
+            <div>Fecha entrega</div>
+            <div>Eliminar</div>
+          </div>
+        </>
       )}
       {items.map((item, idx) => ( 
-        <div key={idx} className={`grid grid-cols-[2fr_0.7fr_1fr_1fr_1.2fr_0.5fr] gap-2 items-center border-b pb-2 mb-2 ${
+        <div key={idx} className={`grid grid-cols-[2fr_0.7fr_1fr_1fr_1.2fr_0.5fr] gap-1 items-center border-b mb-2 p-2 rounded-lg border border-blue-200 ${
           (item.price > 0 && item.paid_amount >= item.price) ? 'bg-green-50' : 
           (item.paid_amount > 0) ? 'bg-blue-50' : ''
         }`}>
@@ -65,7 +67,7 @@ function OrderItemsEditor({ items, handleAdd, handleDelete, handleChange }) {
                   const value = e.target.value.replace(/[^0-9]/g, '');
                   handleChange(idx, "price", parseInt(value) || 0);
                 }}
-                className="mt-1 w-full rounded-xl border border-slate-300 pl-6 pr-3 py-2 text-right font-mono text-sm"
+                className="mt-1 w-full rounded-xl border border-slate-300 pl-6 pr-3 py-2 text-right font-mono text-xs"
                 placeholder="0"
               />
             </div>
@@ -84,7 +86,7 @@ function OrderItemsEditor({ items, handleAdd, handleDelete, handleChange }) {
                     handleChange(idx, "paid_amount", numValue);
                   }
                 }}
-                className="mt-1 w-full rounded-xl border border-slate-300 pl-6 pr-3 py-2 text-right font-mono text-sm"
+                className="mt-1 w-full rounded-xl border border-slate-300 pl-6 pr-3 py-2 text-right font-mono text-xs"
                 placeholder="0"
                 title={`Máximo: ${(parseInt(item.price) || 0).toLocaleString('es-CL', { style: 'currency', currency: 'CLP' })}`}
               />

@@ -371,9 +371,18 @@ export default function NewOrderModal({
           const extension = file.type.split('/')[1] || 'png';
           const fileName = `pasted_image_${timestamp}.${extension}`;
           
-          // Crear File object con nombre personalizado
-          const namedFile = new File([file], fileName, { type: file.type });
-          imageFiles.push(namedFile);
+          // Crear nuevo File con Blob y propiedades personalizadas (más compatible)
+          const renamedFile = new Blob([file], { type: file.type });
+          renamedFile.name = fileName;
+          renamedFile.lastModified = Date.now();
+          
+          // Convertir Blob a File-like object
+          Object.defineProperty(renamedFile, 'name', {
+            value: fileName,
+            writable: false
+          });
+          
+          imageFiles.push(renamedFile);
         }
       }
     }
@@ -397,7 +406,11 @@ export default function NewOrderModal({
       // Subir todos en paralelo
       const uploads = files.map(async (file) => {
         const formData = new FormData();
-        formData.append("file", file);
+        
+        // Manejar tanto File como Blob (para paste)
+        const fileName = file.name || `pasted_image_${Date.now()}.png`;
+        formData.append("file", file, fileName);
+        
         const res = await fetch("/api/upload-abono-image", {
           method: "POST",
           body: formData,
@@ -715,8 +728,8 @@ export default function NewOrderModal({
                   <div>
                     <p className="text-base font-medium text-gray-900 mb-2">
                       Arrastra archivos aquí, 
-                      <span className="text-blue-600 hover:text-blue-500 underline">explora</span> o 
-                      <span className="text-green-600 font-semibold">pega desde portapapeles</span>
+                      <span className="text-blue-600 hover:text-blue-500 underline"> explora</span> o 
+                      <span className="text-green-600 font-semibold"> pega desde portapapeles</span>
                     </p>
                     <p className="text-sm text-gray-500 mb-2">
                       PNG, JPG hasta 5MB • Múltiples archivos • Screenshots
