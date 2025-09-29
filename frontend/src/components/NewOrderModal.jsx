@@ -131,9 +131,18 @@ export default function NewOrderModal({
         description: order.description ?? "",
         status: order.status ?? "pre-pedido",
         // abono_images: frontend supports multiple; prefer order.receipts (new API), fallback to order.abono_image_url
-        abono_images: (order.receipts && order.receipts.length)
-          ? dedupeReceipts(order.receipts.map(r => ({ id: r.id, url: normalizeServerUrl(r.url), filename: r.filename || getFileNameFromUrl(r.url), uploaded_at: r.uploaded_at })))
-          : (order.abono_image_url ? [{ url: normalizeServerUrl(order.abono_image_url), filename: getFileNameFromUrl(order.abono_image_url) }] : []),
+        abono_images: editMode && order?.receipts && order.receipts.length
+          ? dedupeReceipts(order.receipts.map(r => ({ 
+              id: r.id, 
+              url: normalizeServerUrl(r.url), 
+              filename: r.filename || getFileNameFromUrl(r.url),
+              storage_key: r.storage_key,
+              uploaded_at: r.uploaded_at 
+            })))
+          : (order.abono_image_url ? [{ 
+              url: normalizeServerUrl(order.abono_image_url), 
+              filename: getFileNameFromUrl(order.abono_image_url) 
+            }] : []),
       };
       setForm(next);
       initialFormRef.current = next;
@@ -220,27 +229,37 @@ export default function NewOrderModal({
           throw new Error(txt || "Error al subir imagen");
         }
         const data = await res.json();
-        // El backend devuelve "/uploads/comprobantes/.." — en dev hacemos proxy con /api
-        return data.url && data.url.startsWith("/api") ? data.url : `/api${data.url}`;
+        // El backend ahora devuelve { url, storage_key, storage_provider }
+        const url = data.url && data.url.startsWith("/api") ? data.url : 
+                   (data.storage_provider === "supabase" ? data.url : `/api${data.url}`);
+        return { url, storage_key: data.storage_key, filename: getFileNameFromUrl(data.url) };
       });
 
       const results = await Promise.all(uploads);
-      // Añadir las nuevas URLs al array existente
-      // Map urls to objects; if in editMode and order.code, persist each as receipt in backend
-      const mapped = results.map(u => ({ url: u, filename: getFileNameFromUrl(u) }));
+      // Map results to objects; if in editMode and order.code, persist each as receipt in backend
       if (editMode && order?.code) {
         // persist each to backend
         const persisted = [];
-        for (const item of mapped) {
+        for (const item of results) {
           try {
             const res = await fetch(`/api/orders/${order.code}/receipts`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ url: item.url, filename: item.filename })
+              body: JSON.stringify({ 
+                url: item.url, 
+                filename: item.filename,
+                storage_key: item.storage_key 
+              })
             });
             if (res.ok) {
               const data = await res.json();
-              persisted.push({ id: data.id, url: data.url, filename: data.filename, uploaded_at: data.uploaded_at });
+              persisted.push({ 
+                id: data.id, 
+                url: data.url, 
+                filename: data.filename, 
+                storage_key: data.storage_key,
+                uploaded_at: data.uploaded_at 
+              });
             } else {
               // fallback to local-only
               persisted.push(item);
@@ -252,7 +271,7 @@ export default function NewOrderModal({
         }
         setForm((f) => ({ ...f, abono_images: dedupeReceipts([ ...(f.abono_images || []), ...persisted ]) }));
       } else {
-        setForm((f) => ({ ...f, abono_images: dedupeReceipts([ ...(f.abono_images || []), ...mapped ]) }));
+        setForm((f) => ({ ...f, abono_images: dedupeReceipts([ ...(f.abono_images || []), ...results ]) }));
       }
     } catch (err) {
       console.error(err);

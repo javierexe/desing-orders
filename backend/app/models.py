@@ -47,6 +47,7 @@ class OrderReceipt(Base):
     order_id = Column(Integer, ForeignKey("orders.id", ondelete="CASCADE"), nullable=False)
     url = Column(String(255), nullable=False)
     filename = Column(String(255), nullable=True)
+    storage_key = Column(String(255), nullable=True)  # Supabase Storage path
     uploaded_at = Column(Date, nullable=False)
 
     order = relationship("Order", back_populates="receipts")

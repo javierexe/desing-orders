@@ -99,6 +99,7 @@ class OrderOut(OrderBase):
 class OrderReceiptBase(BaseModel):
     url: str
     filename: Optional[str] = None
+    storage_key: Optional[str] = None  # Supabase Storage path
 
 class OrderReceiptCreate(OrderReceiptBase):
     pass
