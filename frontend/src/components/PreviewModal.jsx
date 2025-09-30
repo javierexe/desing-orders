@@ -16,7 +16,19 @@ export default function PreviewModal() {
     function handler(e) {
       const u = e?.detail?.url;
       if (!u) return;
-      const final = u.startsWith('/api') ? u : `/api${u}`;
+      
+      // Normalizar URL: solo añadir /api a URLs locales, no a URLs completas
+      let final = u;
+      if (typeof u === "string") {
+        if (u.startsWith("http://") || u.startsWith("https://")) {
+          final = u; // URL completa, usar tal como está
+        } else if (u.startsWith("/api")) {
+          final = u; // Ya tiene /api
+        } else if (u.startsWith("/")) {
+          final = `/api${u}`; // URL local, añadir /api
+        }
+      }
+      
       setUrl(final);
       setClosing(false);
       setLoading(true);

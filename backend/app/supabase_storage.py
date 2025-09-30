@@ -19,7 +19,7 @@ class SupabaseStorage:
             )
         
         self.client: Client = create_client(self.url, self.key)
-        self.bucket_name = os.getenv("SUPABASE_BUCKET", "order-receipts")  # Usar variable de entorno
+        self.bucket_name = os.getenv("SUPABASE_BUCKET", "receipts")  # Bucket correcto en Supabase
 
     def upload_file(self, file_content: bytes, filename: str, content_type: str) -> tuple[str, str]:
         """
