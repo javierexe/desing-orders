@@ -8,6 +8,9 @@ import { detectMostLikelyAmount, formatChileanAmount } from '../utils/amountPars
  */
 const AmountDetection = ({ 
   file, 
+  items = [],
+  selectedItemId,
+  onItemSelected,
   onAmountDetected, 
   onCancel,
   onSkipFile, // Nueva prop para omitir archivo sin subir
@@ -72,8 +75,13 @@ const AmountDetection = ({
    * Confirma el monto detectado
    */
   const confirmAmount = () => {
+    if (!selectedItemId) {
+      alert('Por favor selecciona un item para vincular este comprobante');
+      return;
+    }
+    
     if (detectionResult?.amount) {
-      onAmountDetected(detectionResult.amount);
+      onAmountDetected(detectionResult.amount, selectedItemId);
     }
   };
 
@@ -209,6 +217,26 @@ const AmountDetection = ({
                   </p>
                 </div>
               )}
+
+              {/* Selección de item */}
+              <div className="bg-white border border-green-200 rounded p-3 mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  ¿A qué item corresponde este abono?
+                </label>
+                <select
+                  value={selectedItemId || ''}
+                  onChange={(e) => onItemSelected(e.target.value || null)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                >
+                  <option value="">Selecciona un item...</option>
+                  {items.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.name} - ${((item.price || 0) / 100).toLocaleString('es-CL')}
+                      {item.paid_amount > 0 && ` (Abonado: $${(item.paid_amount / 100).toLocaleString('es-CL')})`}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
               {/* Botones de acción */}
               <div className="flex space-x-3 justify-center">

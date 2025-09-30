@@ -120,6 +120,7 @@ export default function NewOrderModal({
   const [pendingFiles, setPendingFiles] = useState([]); // Archivos esperando análisis OCR
   const [showAmountDetection, setShowAmountDetection] = useState(false);
   const [currentFileForDetection, setCurrentFileForDetection] = useState(null);
+  const [selectedItemId, setSelectedItemId] = useState(null); // Item seleccionado para vincular comprobante
   
   const dropzoneRef = useRef(null);
 
@@ -172,6 +173,13 @@ export default function NewOrderModal({
       initialFormRef.current = blank;
       setItems([]);
     }
+    
+    // Limpiar estados de detección al abrir modal
+    setSelectedItemId(null);
+    setShowAmountDetection(false);
+    setCurrentFileForDetection(null);
+    setPendingFiles([]);
+    
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, editMode, order?.code]);
 
@@ -413,6 +421,12 @@ export default function NewOrderModal({
   const handleFileUploadWithDetection = async (files) => {
     if (!files || files.length === 0) return;
 
+    // ✅ VALIDACIÓN: No se pueden subir comprobantes sin items
+    if (items.length === 0) {
+      showToast('❌ Debes agregar al menos un item antes de subir comprobantes', 'error');
+      return;
+    }
+
     // Filtrar archivos de imagen
     const imageFiles = Array.from(files).filter(isImageFile);
     const nonImageFiles = Array.from(files).filter(f => !isImageFile(f));
@@ -422,9 +436,9 @@ export default function NewOrderModal({
       await processFiles(nonImageFiles);
     }
 
-    // Para archivos de imagen, ofrecer detección automática
+    // Para archivos de imagen, hacer detección automática siempre
     if (imageFiles.length > 0) {
-      // Si solo hay una imagen, subir y mostrar detección para esa imagen
+      // Si solo hay una imagen, subir y mostrar detección
       if (imageFiles.length === 1) {
         const file = imageFiles[0];
         
@@ -436,50 +450,48 @@ export default function NewOrderModal({
         setPendingFiles([]);
         setShowAmountDetection(true);
       } else {
-        // Si hay múltiples imágenes, preguntar si quiere detección automática
-        const userWantsDetection = window.confirm(
-          `Se detectaron ${imageFiles.length} imágenes. ¿Desea habilitar la detección automática de montos para cada una?`
-        );
+        // Para múltiples imágenes, hacer detección automática en todas
+        // Subir primer archivo y mostrar detección
+        const firstFile = imageFiles[0];
+        await processFiles([firstFile]);
         
-        if (userWantsDetection) {
-          // Subir primer archivo y mostrar detección
-          const firstFile = imageFiles[0];
-          await processFiles([firstFile]);
-          
-          // Configurar detección para el primer archivo, resto pendiente para subir después
-          setCurrentFileForDetection(firstFile);
-          setPendingFiles(imageFiles.slice(1)); // Resto de archivos pendientes (aún no subidos)
-          setShowAmountDetection(true);
-        } else {
-          // Procesar todas las imágenes sin detección
-          await processFiles(imageFiles);
-        }
+        // Configurar detección para el primer archivo, resto pendiente para subir después
+        setCurrentFileForDetection(firstFile);
+        setPendingFiles(imageFiles.slice(1)); // Resto de archivos pendientes (aún no subidos)
+        setShowAmountDetection(true);
       }
     }
   };
 
   // Función para manejar cuando se detecta un monto automáticamente
-  const handleAmountDetected = async (detectedAmount) => {
-    console.log('💰 NewOrderModal: Amount detected:', detectedAmount);
+  const handleAmountDetected = async (detectedAmount, itemId) => {
+    console.log('💰 NewOrderModal: Amount detected:', detectedAmount, 'for item:', itemId);
     
-    // Agregar el monto detectado a los items de la orden
-    const newItem = {
-      id: Date.now(), // ID temporal
-      name: "Abono detectado",
-      description: `Abono detectado automáticamente: $${detectedAmount.toLocaleString('es-CL')}`,
-      price: 0, // El precio del producto queda en 0 para que el usuario lo complete
-      paid_amount: detectedAmount * 100, // Solo el abono se marca con el monto detectado
-      quantity: 1
-    };
+    if (!itemId) {
+      showToast('❌ Debes seleccionar un item para vincular el comprobante', 'error');
+      return;
+    }
 
-    console.log('📝 NewOrderModal: Adding item:', newItem);
-    setItems(prev => [...prev, newItem]);
+    // Aplicar el abono al item seleccionado
+    setItems(prev => prev.map(item => {
+      if (item.id === parseInt(itemId)) {
+        const currentPaid = item.paid_amount || 0;
+        const newPaidAmount = currentPaid + (detectedAmount * 100); // Convertir a centavos
+        console.log(`📝 NewOrderModal: Updating item ${item.name}: paid_amount ${currentPaid} + ${detectedAmount * 100} = ${newPaidAmount}`);
+        
+        return {
+          ...item,
+          paid_amount: newPaidAmount
+        };
+      }
+      return item;
+    }));
     
-    // NO procesar archivo aquí - ya se debería haber subido antes de la detección
-    // Solo continuar con el siguiente archivo
+    // Limpiar selección de item y continuar con siguiente archivo
+    setSelectedItemId(null);
     await finishFileProcessing();
     
-    showToast(`✅ Monto detectado: $${detectedAmount.toLocaleString('es-CL')}`, 'success');
+    showToast(`✅ Abono de $${detectedAmount.toLocaleString('es-CL')} aplicado`, 'success');
   };
 
   // Función para cancelar detección y procesar archivos normalmente
@@ -843,7 +855,7 @@ export default function NewOrderModal({
             {/* Zona de drag & drop + paste */}
             <div 
               ref={dropzoneRef}
-              className={`border-2 border-dashed rounded-lg p-6 text-center transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+              className={`border-2 border-dashed rounded-lg p-4 text-center transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
                 isDragOver 
                   ? 'border-blue-400 bg-blue-50' 
                   : uploading 
@@ -871,44 +883,34 @@ export default function NewOrderModal({
               
               {uploading ? (
                 <div className="flex flex-col items-center">
-                  <Upload className="w-6 h-6 text-blue-500 animate-bounce mb-3" />
-                  <p className="text-base font-medium text-gray-900 mb-1">Subiendo archivos...</p>
-                  <p className="text-sm text-gray-500">Por favor espera</p>
+                  <Upload className="w-5 h-5 text-blue-500 animate-bounce mb-2" />
+                  <p className="text-sm font-medium text-gray-900 mb-1">Subiendo archivos...</p>
+                  <p className="text-xs text-gray-500">Por favor espera</p>
                 </div>
               ) : (
                 <>
-                  <CloudUpload className="w-8 h-8 text-gray-400 mx-auto mb-3 transition-colors group-hover:text-blue-500" />
+                  <CloudUpload className="w-6 h-6 text-gray-400 mx-auto mb-2 transition-colors group-hover:text-blue-500" />
                   <div>
-                    <p className="text-base font-medium text-gray-900 mb-2">
+                    <p className="text-sm font-medium text-gray-900 mb-1">
                       Arrastra archivos aquí, 
-                      <span className="text-blue-600 hover:text-blue-500 underline"> explora</span> o 
+                      <span> </span><span className="text-blue-600 hover:text-blue-500 underline">explora</span> o 
                       <span className="text-green-600 font-semibold"> pega desde portapapeles</span>
                     </p>
-                    <p className="text-sm text-gray-500 mb-2">
+                    <p className="text-xs text-gray-500 mb-2">
                       PNG, JPG hasta 5MB • Múltiples archivos • Screenshots
                     </p>
                     
                     {/* Instrucciones de teclado */}
-                    <div className="flex items-center justify-center space-x-4 text-xs text-gray-400">
+                    <div className="flex items-center justify-center space-x-3 text-xs text-gray-400">
                       <div className="flex items-center space-x-1">
-                        <kbd className="px-2 py-1 bg-gray-100 rounded font-mono text-gray-600">Ctrl</kbd>
-                        <span>+</span>
-                        <kbd className="px-2 py-1 bg-gray-100 rounded font-mono text-gray-600">V</kbd>
-                        <span>para pegar</span>
+                        <kbd className="px-1 py-0.5 bg-gray-100 rounded text-xs font-mono text-gray-600">Ctrl+V</kbd>
+                        <span>pegar</span>
                       </div>
                       <div className="w-1 h-1 bg-gray-300 rounded-full"></div>
                       <div className="flex items-center space-x-1">
                         <Clipboard className="w-3 h-3" />
                         <span>Click para seleccionar</span>
                       </div>
-                    </div>
-                  </div>
-                  
-                  {/* Indicador dinámico de paste */}
-                  <div className="mt-4 text-sm text-green-600 opacity-0 focus-within:opacity-100 transition-all duration-300">
-                    <div className="flex items-center justify-center space-x-2 bg-green-50 border border-green-200 rounded-lg py-2 px-4 inline-flex">
-                      <Clipboard className="w-4 h-4" />
-                      <span className="font-medium">Listo para pegar • Presiona Ctrl+V</span>
                     </div>
                   </div>
                 </>
@@ -983,6 +985,9 @@ export default function NewOrderModal({
             <div className="col-span-full">
               <AmountDetection
                 file={currentFileForDetection}
+                items={items}
+                selectedItemId={selectedItemId}
+                onItemSelected={setSelectedItemId}
                 onAmountDetected={handleAmountDetected}
                 onCancel={handleDetectionCanceled}
                 onSkipFile={handleSkipFile}
