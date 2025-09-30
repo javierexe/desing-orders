@@ -27,7 +27,7 @@ ip:
 
 backend:
 	@echo ">> Iniciando backend en http://$(IP):$(BACKEND_PORT) ..."
-	cd backend && uvicorn app.main:app --reload --host $(BACKEND_HOST) --port $(BACKEND_PORT)
+	cd backend && source ../.venv/bin/activate && uvicorn app.main:app --reload --host $(BACKEND_HOST) --port $(BACKEND_PORT)
 
 frontend:
 	@echo ">> Iniciando frontend en http://$(IP):$(FRONT_PORT) ..."

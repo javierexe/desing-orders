@@ -7,6 +7,7 @@ from .db import SessionLocal
 from . import models, schemas
 from .abono_image import router as abono_image_router
 from .abono_receipts import router as abono_receipts_router
+from .ocr_router import router as ocr_router
 import logging
 
 
@@ -17,6 +18,7 @@ logger = logging.getLogger(__name__)
 app = FastAPI()
 app.include_router(abono_image_router)
 app.include_router(abono_receipts_router)
+app.include_router(ocr_router, prefix="/ocr", tags=["OCR"])
 
 # CORS: ajusta dominios según tu front (localhost:5173, Vercel, etc.)
 app.add_middleware(

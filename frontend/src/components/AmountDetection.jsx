@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Search, CheckCircle, XCircle, Loader2, Eye, EyeOff } from 'lucide-react';
-import { extractTextFromImage } from '../utils/ocrServiceMock'; // Usando mock para evitar DataCloneError
+import { extractTextFromImage } from '../utils/ocrServicePython'; // Cambiado a OCR Python
 import { detectMostLikelyAmount, formatChileanAmount } from '../utils/amountParser';
 
 /**
