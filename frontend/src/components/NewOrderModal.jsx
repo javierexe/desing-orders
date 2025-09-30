@@ -547,10 +547,13 @@ export default function NewOrderModal({
           throw new Error(txt || "Error al subir imagen");
         }
         const data = await res.json();
+        console.log('📡 Upload response:', data);
         // El backend ahora devuelve { url, storage_key, storage_provider }
-        const url = data.storage_provider === "supabase" ? data.url : 
-                   (data.url.startsWith("/api") ? data.url : `/api${data.url}`);
-        return { url, storage_key: data.storage_key, filename: getFileNameFromUrl(data.url) };
+        // Para Supabase, usar la URL directamente. Para local, normalizarla.
+        const url = data.storage_provider === "supabase" ? data.url : normalizeServerUrl(data.url);
+        const result = { url, storage_key: data.storage_key, filename: getFileNameFromUrl(data.url) };
+        console.log('🏗️ Processed result:', result);
+        return result;
       });
 
       const results = await Promise.all(uploads);
@@ -588,7 +591,11 @@ export default function NewOrderModal({
         }
         setForm((f) => ({ ...f, abono_images: dedupeReceipts([ ...(f.abono_images || []), ...persisted ]) }));
       } else {
-        setForm((f) => ({ ...f, abono_images: dedupeReceipts([ ...(f.abono_images || []), ...results ]) }));
+        setForm((f) => {
+          const newImages = dedupeReceipts([ ...(f.abono_images || []), ...results ]);
+          console.log('🖼️ Updating abono_images:', newImages);
+          return { ...f, abono_images: newImages };
+        });
       }
       
       showToast(`✅ ${results.length} archivo(s) subido(s) correctamente`, 'success');
