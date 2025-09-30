@@ -43,6 +43,9 @@ class SupabaseStorage:
             if response:
                 # Obtener URL pública
                 public_url = self.client.storage.from_(self.bucket_name).get_public_url(storage_path)
+                # Limpiar caracteres extra al final de la URL
+                if public_url.endswith('?'):
+                    public_url = public_url[:-1]
                 return public_url, storage_path
             else:
                 raise HTTPException(
