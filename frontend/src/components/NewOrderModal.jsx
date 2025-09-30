@@ -589,45 +589,14 @@ export default function NewOrderModal({
 
       const results = await Promise.all(uploads);
       
-      // Si estamos en modo edición, persistir en backend
-      if (editMode && order?.code) {
-        const persisted = [];
-        for (const item of results) {
-          try {
-            const res = await fetch(`/api/orders/${order.code}/receipts`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ 
-                url: item.url, 
-                filename: item.filename,
-                storage_key: item.storage_key 
-              })
-            });
-            if (res.ok) {
-              const data = await res.json();
-              persisted.push({ 
-                id: data.id, 
-                url: data.url, 
-                filename: data.filename, 
-                storage_key: data.storage_key,
-                uploaded_at: data.uploaded_at 
-              });
-            } else {
-              persisted.push(item);
-            }
-          } catch (err) {
-            console.error('Error persistiendo receipt:', err);
-            persisted.push(item);
-          }
-        }
-        setForm((f) => ({ ...f, abono_images: dedupeReceipts([ ...(f.abono_images || []), ...persisted ]) }));
-      } else {
-        setForm((f) => {
-          const newImages = dedupeReceipts([ ...(f.abono_images || []), ...results ]);
-          console.log('🖼️ Updating abono_images:', newImages);
-          return { ...f, abono_images: newImages };
-        });
-      }
+      // En modo edición, NO persistir inmediatamente - mantener solo en estado temporal
+      // Los comprobantes se guardarán cuando se haga "Guardar cambios"
+      console.log('💾 Manteniendo comprobantes en estado temporal hasta guardar cambios');
+      setForm((f) => {
+        const newImages = dedupeReceipts([ ...(f.abono_images || []), ...results ]);
+        console.log('🖼️ Updating abono_images (temporal):', newImages);
+        return { ...f, abono_images: newImages };
+      });
       
       showToast(`✅ ${results.length} archivo(s) subido(s) correctamente`, 'success');
     } catch (err) {
@@ -688,6 +657,35 @@ export default function NewOrderModal({
       let saved;
       if (editMode && order) {
         saved = await api.updateOrder(order.code, payload);
+        
+        // Persistir comprobantes que aún no tienen ID (comprobantes temporales)
+        if (form.abono_images && form.abono_images.length) {
+          const toPersist = form.abono_images.filter(a => !a.id);
+          console.log('💾 Persistiendo comprobantes temporales en modo edición:', toPersist.length);
+          
+          for (const item of toPersist) {
+            try {
+              const res = await fetch(`/api/orders/${order.code}/receipts`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                  url: item.url, 
+                  filename: item.filename,
+                  storage_key: item.storage_key 
+                })
+              });
+              if (res.ok) {
+                const data = await res.json();
+                console.log('✅ Comprobante persistido:', data);
+              } else {
+                console.error('❌ Error persistiendo comprobante:', await res.text());
+              }
+            } catch (err) {
+              console.error('❌ Error persistiendo comprobante:', err);
+            }
+          }
+        }
+        
         onNotify?.(`Pedido editado correctamente${order?.code ? `: ${order.code}` : ""}`, "success");
         onUpdated?.(saved);
       } else {
