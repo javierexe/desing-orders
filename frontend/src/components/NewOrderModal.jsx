@@ -450,16 +450,19 @@ export default function NewOrderModal({
 
   // Función para manejar cuando se detecta un monto automáticamente
   const handleAmountDetected = async (detectedAmount) => {
+    console.log('💰 NewOrderModal: Amount detected:', detectedAmount);
+    
     // Agregar el monto detectado a los items de la orden
     const newItem = {
       id: Date.now(), // ID temporal
       name: "Transferencia detectada",
-      description: `Monto detectado automáticamente: ${detectedAmount.toLocaleString('es-CL')}`,
-      price: detectedAmount * 100, // Convertir a centavos
-      paid_amount: detectedAmount * 100, // Marcar como pagado
+      description: `Monto detectado automáticamente: $${detectedAmount.toLocaleString('es-CL')}`,
+      price: detectedAmount * 100, // El monto viene en pesos, convertir a centavos
+      paid_amount: detectedAmount * 100, // Marcar como pagado en centavos
       quantity: 1
     };
 
+    console.log('📝 NewOrderModal: Adding item:', newItem);
     setItems(prev => [...prev, newItem]);
     
     // Procesar el archivo actual y continuar con el siguiente
