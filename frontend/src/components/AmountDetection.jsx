@@ -10,6 +10,7 @@ const AmountDetection = ({
   file, 
   onAmountDetected, 
   onCancel,
+  onSkipFile, // Nueva prop para omitir archivo sin subir
   isVisible = true 
 }) => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -132,6 +133,14 @@ const AmountDetection = ({
             >
               Ingresar Manual
             </button>
+            {onSkipFile && (
+              <button
+                onClick={onSkipFile}
+                className="px-3 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors text-sm"
+              >
+                Omitir archivo
+              </button>
+            )}
           </div>
         </div>
       )}

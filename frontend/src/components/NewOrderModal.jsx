@@ -473,27 +473,54 @@ export default function NewOrderModal({
 
   // Función para cancelar detección y procesar archivos normalmente
   const handleDetectionCanceled = async () => {
-    await processCurrentFileAndContinue();
+    try {
+      await processCurrentFileAndContinue();
+    } catch (error) {
+      console.error('❌ Error al procesar archivo después de cancelar detección:', error);
+      // En caso de error, solo limpiar el estado sin reprocessar
+      finishFileProcessing();
+    }
   };
 
   // Función para procesar archivo actual y continuar con el siguiente
   const processCurrentFileAndContinue = async () => {
     if (currentFileForDetection) {
-      // Procesar archivo actual
-      await processFiles([currentFileForDetection]);
-      
-      // Remover archivo actual de pendientes
-      const remainingFiles = pendingFiles.filter(f => f !== currentFileForDetection);
-      setPendingFiles(remainingFiles);
-      
-      if (remainingFiles.length > 0) {
-        // Continuar con el siguiente archivo
-        setCurrentFileForDetection(remainingFiles[0]);
-      } else {
-        // No hay más archivos, cerrar detección
-        setShowAmountDetection(false);
-        setCurrentFileForDetection(null);
+      try {
+        // Procesar archivo actual
+        await processFiles([currentFileForDetection]);
+        
+        // Si llegamos aquí, el archivo se procesó exitosamente
+        finishFileProcessing();
+        
+      } catch (error) {
+        console.error('❌ Error al procesar archivo:', error);
+        // En caso de error, mostrar mensaje y limpiar estado
+        showToast('❌ Error al subir archivo', 'error');
+        finishFileProcessing();
       }
+    } else {
+      finishFileProcessing();
+    }
+  };
+
+  // Función para omitir archivo completamente (sin subir)
+  const handleSkipFile = () => {
+    console.log('⏭️ NewOrderModal: Skipping file:', currentFileForDetection?.name);
+    finishFileProcessing();
+    showToast('📄 Archivo omitido', 'info');
+  };
+  const finishFileProcessing = () => {
+    // Remover archivo actual de pendientes
+    const remainingFiles = pendingFiles.filter(f => f !== currentFileForDetection);
+    setPendingFiles(remainingFiles);
+    
+    if (remainingFiles.length > 0) {
+      // Continuar con el siguiente archivo
+      setCurrentFileForDetection(remainingFiles[0]);
+    } else {
+      // No hay más archivos, cerrar detección
+      setShowAmountDetection(false);
+      setCurrentFileForDetection(null);
     }
   };
 
@@ -932,6 +959,7 @@ export default function NewOrderModal({
                 file={currentFileForDetection}
                 onAmountDetected={handleAmountDetected}
                 onCancel={handleDetectionCanceled}
+                onSkipFile={handleSkipFile}
                 isVisible={showAmountDetection}
               />
             </div>
