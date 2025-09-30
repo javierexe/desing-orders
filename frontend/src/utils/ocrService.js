@@ -18,13 +18,17 @@ class OCRService {
     try {
       console.log('Initializing OCR service...');
       
-      // Crear worker con configuración simplificada
+      // Crear worker con configuración más específica
       this.worker = await Tesseract.createWorker({
         logger: m => {
           if (m.status === 'recognizing text') {
             console.log(`OCR Progress: ${Math.round(m.progress * 100)}%`);
           }
-        }
+        },
+        workerPath: 'https://unpkg.com/tesseract.js@4.1.1/dist/worker.min.js',
+        langPath: 'https://tessdata.projectnaptha.com/4.0.0',
+        corePath: 'https://unpkg.com/tesseract.js-core@4.0.3/tesseract-core.wasm.js',
+        errorHandler: err => console.error('Tesseract Worker Error:', err)
       });
 
       // Cargar idiomas
@@ -33,6 +37,12 @@ class OCRService {
       
       console.log('Initializing languages...');
       await this.worker.initialize('spa+eng');
+      
+      // Configurar parámetros específicos para números después de la inicialización
+      await this.worker.setParameters({
+        tessedit_char_whitelist: '0123456789$.,ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz ',
+        tessedit_pageseg_mode: '6' // Uniform block of text
+      });
       
       this.isInitialized = true;
       console.log('OCR Service initialized successfully');
@@ -95,56 +105,23 @@ class OCRService {
         throw new Error('Invalid image file');
       }
 
-      // Crear una imagen para verificar que se puede cargar
-      const imageUrl = URL.createObjectURL(imageFile);
+      // Convertir el archivo a una URL de datos para evitar problemas de clonación
+      const imageDataUrl = await this.fileToDataUrl(imageFile);
       
-      return new Promise((resolve, reject) => {
-        const img = new Image();
-        
-        img.onload = async () => {
-          try {
-            console.log('Image loaded successfully, starting OCR...');
-            
-            // Ejecutar OCR directamente con el archivo (sin preprocesamiento por ahora)
-            const { data: { text, confidence } } = await this.worker.recognize(imageFile);
-            
-            console.log('OCR completed successfully');
-            console.log('Text extracted:', text);
-            console.log('Confidence:', confidence);
-            
-            // Limpiar URL
-            URL.revokeObjectURL(imageUrl);
-            
-            resolve({
-              text: text.trim(),
-              confidence,
-              success: true
-            });
-          } catch (error) {
-            console.error('OCR processing error:', error);
-            URL.revokeObjectURL(imageUrl);
-            resolve({
-              text: '',
-              confidence: 0,
-              success: false,
-              error: error.message
-            });
-          }
-        };
-        
-        img.onerror = () => {
-          console.error('Failed to load image');
-          URL.revokeObjectURL(imageUrl);
-          resolve({
-            text: '',
-            confidence: 0,
-            success: false,
-            error: 'Failed to load image'
-          });
-        };
-        
-        img.src = imageUrl;
-      });
+      console.log('Image converted to data URL, starting OCR...');
+      
+      // Ejecutar OCR con la URL de datos
+      const { data: { text, confidence } } = await this.worker.recognize(imageDataUrl);
+      
+      console.log('OCR completed successfully');
+      console.log('Text extracted:', text);
+      console.log('Confidence:', confidence);
+      
+      return {
+        text: text.trim(),
+        confidence,
+        success: true
+      };
       
     } catch (error) {
       console.error('Error in extractText:', error);
@@ -155,6 +132,18 @@ class OCRService {
         error: error.message
       };
     }
+  }
+
+  /**
+   * Convierte un archivo a data URL
+   */
+  fileToDataUrl(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
   }
 
   /**

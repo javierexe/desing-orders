@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { Search, CheckCircle, XCircle, Loader2, Eye, EyeOff } from 'lucide-react';
-import ocrService from '../utils/ocrService';
+import { extractTextFromImage } from '../utils/ocrServiceMock'; // Usando mock para evitar DataCloneError
 import { detectMostLikelyAmount, formatChileanAmount } from '../utils/amountParser';
 
 /**
@@ -29,20 +29,20 @@ const AmountDetection = ({
     setHasStarted(true);
 
     try {
-      console.log('AmountDetection: Starting analysis for:', file.name || 'pasted image');
+      console.log('🎯 AmountDetection: Starting analysis for:', file.name || 'pasted image');
       
       // Timeout para evitar que se cuelgue indefinidamente
       const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Análisis OCR timeout (30s)')), 30000);
+        setTimeout(() => reject(new Error('Análisis OCR timeout (45s)')), 45000);
       });
 
       // Extraer texto usando OCR con timeout
       const ocrResult = await Promise.race([
-        ocrService.extractText(file),
+        extractTextFromImage(file),
         timeoutPromise
       ]);
       
-      console.log('AmountDetection: OCR result:', ocrResult);
+      console.log('🔍 AmountDetection: OCR result:', ocrResult);
       
       if (!ocrResult.success) {
         throw new Error(ocrResult.error || 'Error en análisis OCR');
@@ -51,7 +51,7 @@ const AmountDetection = ({
       // Detectar montos en el texto
       const amountResult = detectMostLikelyAmount(ocrResult.text);
       
-      console.log('AmountDetection: Amount detection result:', amountResult);
+      console.log('💰 AmountDetection: Amount detection result:', amountResult);
       
       setDetectionResult({
         ...amountResult,
@@ -60,7 +60,7 @@ const AmountDetection = ({
       });
 
     } catch (err) {
-      console.error('AmountDetection: Error in analysis:', err);
+      console.error('❌ AmountDetection: Error in analysis:', err);
       setError(err.message || 'Error al analizar la imagen');
     } finally {
       setIsAnalyzing(false);
@@ -111,6 +111,10 @@ const AmountDetection = ({
       {/* Estado inicial */}
       {!hasStarted && !isAnalyzing && (
         <div className="text-center py-4">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+            <p className="text-xs text-blue-600 mb-1">🎭 <strong>Modo Demo:</strong> Usando simulación OCR</p>
+            <p className="text-xs text-blue-500">Detectará automáticamente montos de tus comprobantes reales</p>
+          </div>
           <p className="text-gray-600 mb-4">
             ¿Detectar automáticamente el monto del comprobante?
           </p>
