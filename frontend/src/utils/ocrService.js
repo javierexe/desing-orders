@@ -16,24 +16,30 @@ class OCRService {
     if (this.isInitialized) return;
 
     try {
+      console.log('Initializing OCR service...');
+      
+      // Crear worker con configuración simplificada
       this.worker = await Tesseract.createWorker({
-        logger: m => console.log(m) // Para debugging
+        logger: m => {
+          if (m.status === 'recognizing text') {
+            console.log(`OCR Progress: ${Math.round(m.progress * 100)}%`);
+          }
+        }
       });
 
+      // Cargar idiomas
+      console.log('Loading languages...');
       await this.worker.loadLanguage('spa+eng');
+      
+      console.log('Initializing languages...');
       await this.worker.initialize('spa+eng');
       
-      // Configurar parámetros para mejor detección de números
-      await this.worker.setParameters({
-        tessedit_char_whitelist: '0123456789$.,',
-        tessedit_pageseg_mode: Tesseract.PSM.AUTO,
-      });
-
       this.isInitialized = true;
       console.log('OCR Service initialized successfully');
     } catch (error) {
       console.error('Error initializing OCR:', error);
-      throw new Error('Failed to initialize OCR service');
+      this.isInitialized = false;
+      throw new Error(`Failed to initialize OCR service: ${error.message}`);
     }
   }
 
@@ -77,25 +83,34 @@ class OCRService {
    */
   async extractText(imageFile) {
     try {
-      await this.initialize();
-
-      console.log('Starting OCR analysis...');
+      console.log('Starting OCR analysis for file:', imageFile.name || 'pasted image');
       
-      // Crear elemento imagen para preprocesamiento
-      const img = new Image();
+      // Reinicializar worker si es necesario
+      if (!this.isInitialized) {
+        await this.initialize();
+      }
+
+      // Verificar que el archivo sea válido
+      if (!imageFile || imageFile.size === 0) {
+        throw new Error('Invalid image file');
+      }
+
+      // Crear una imagen para verificar que se puede cargar
       const imageUrl = URL.createObjectURL(imageFile);
       
       return new Promise((resolve, reject) => {
+        const img = new Image();
+        
         img.onload = async () => {
           try {
-            // Preprocesar imagen
-            const processedCanvas = this.preprocessImage(img);
+            console.log('Image loaded successfully, starting OCR...');
             
-            // Ejecutar OCR
-            const { data: { text, confidence } } = await this.worker.recognize(processedCanvas);
+            // Ejecutar OCR directamente con el archivo (sin preprocesamiento por ahora)
+            const { data: { text, confidence } } = await this.worker.recognize(imageFile);
             
-            console.log('OCR Text extracted:', text);
-            console.log('OCR Confidence:', confidence);
+            console.log('OCR completed successfully');
+            console.log('Text extracted:', text);
+            console.log('Confidence:', confidence);
             
             // Limpiar URL
             URL.revokeObjectURL(imageUrl);
@@ -106,21 +121,33 @@ class OCRService {
               success: true
             });
           } catch (error) {
+            console.error('OCR processing error:', error);
             URL.revokeObjectURL(imageUrl);
-            reject(error);
+            resolve({
+              text: '',
+              confidence: 0,
+              success: false,
+              error: error.message
+            });
           }
         };
         
         img.onerror = () => {
+          console.error('Failed to load image');
           URL.revokeObjectURL(imageUrl);
-          reject(new Error('Failed to load image'));
+          resolve({
+            text: '',
+            confidence: 0,
+            success: false,
+            error: 'Failed to load image'
+          });
         };
         
         img.src = imageUrl;
       });
       
     } catch (error) {
-      console.error('Error extracting text:', error);
+      console.error('Error in extractText:', error);
       return {
         text: '',
         confidence: 0,

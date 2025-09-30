@@ -29,8 +29,20 @@ const AmountDetection = ({
     setHasStarted(true);
 
     try {
-      // Extraer texto usando OCR
-      const ocrResult = await ocrService.extractText(file);
+      console.log('AmountDetection: Starting analysis for:', file.name || 'pasted image');
+      
+      // Timeout para evitar que se cuelgue indefinidamente
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Análisis OCR timeout (30s)')), 30000);
+      });
+
+      // Extraer texto usando OCR con timeout
+      const ocrResult = await Promise.race([
+        ocrService.extractText(file),
+        timeoutPromise
+      ]);
+      
+      console.log('AmountDetection: OCR result:', ocrResult);
       
       if (!ocrResult.success) {
         throw new Error(ocrResult.error || 'Error en análisis OCR');
@@ -39,6 +51,8 @@ const AmountDetection = ({
       // Detectar montos en el texto
       const amountResult = detectMostLikelyAmount(ocrResult.text);
       
+      console.log('AmountDetection: Amount detection result:', amountResult);
+      
       setDetectionResult({
         ...amountResult,
         ocrText: ocrResult.text,
@@ -46,7 +60,7 @@ const AmountDetection = ({
       });
 
     } catch (err) {
-      console.error('Error in amount detection:', err);
+      console.error('AmountDetection: Error in analysis:', err);
       setError(err.message || 'Error al analizar la imagen');
     } finally {
       setIsAnalyzing(false);
