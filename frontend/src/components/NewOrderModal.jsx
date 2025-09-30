@@ -1081,6 +1081,7 @@ export default function NewOrderModal({
             )}
           </div>
         </form>
+          </div>
         </div>
       </div>
 
