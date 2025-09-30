@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Search, CheckCircle, XCircle, Loader2, Eye, EyeOff } from 'lucide-react';
 import { extractTextFromImage } from '../utils/ocrServiceMock'; // Usando mock para evitar DataCloneError
 import { detectMostLikelyAmount, formatChileanAmount } from '../utils/amountParser';
@@ -21,6 +21,14 @@ const AmountDetection = ({
   const [error, setError] = useState(null);
   const [showDetails, setShowDetails] = useState(false);
   const [hasStarted, setHasStarted] = useState(false);
+
+  // Iniciar análisis automáticamente al montar el componente
+  useEffect(() => {
+    if (file && isVisible && !hasStarted && !isAnalyzing) {
+      console.log('🚀 AmountDetection: Auto-starting analysis');
+      startAnalysis();
+    }
+  }, [file, isVisible]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /**
    * Inicia el análisis OCR del archivo
@@ -231,7 +239,7 @@ const AmountDetection = ({
                   <option value="">Selecciona un item...</option>
                   {items.map((item) => (
                     <option key={item.id} value={item.id}>
-                      {item.name} - ${((item.price || 0) / 100).toLocaleString('es-CL')}
+                      {item.description || item.name || `Item ${items.indexOf(item) + 1}`} - ${((item.price || 0) / 100).toLocaleString('es-CL')}
                       {item.paid_amount > 0 && ` (Abonado: $${(item.paid_amount / 100).toLocaleString('es-CL')})`}
                     </option>
                   ))}

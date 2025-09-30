@@ -474,10 +474,10 @@ export default function NewOrderModal({
 
     // Aplicar el abono al item seleccionado
     setItems(prev => prev.map(item => {
-      if (item.id === parseInt(itemId)) {
+      if (String(item.id) === String(itemId)) { // Comparar como strings para evitar problemas con tipos
         const currentPaid = item.paid_amount || 0;
         const newPaidAmount = currentPaid + (detectedAmount * 100); // Convertir a centavos
-        console.log(`📝 NewOrderModal: Updating item ${item.name}: paid_amount ${currentPaid} + ${detectedAmount * 100} = ${newPaidAmount}`);
+        console.log(`📝 NewOrderModal: Updating item "${item.description}": paid_amount ${currentPaid} + ${detectedAmount * 100} = ${newPaidAmount}`);
         
         return {
           ...item,
@@ -836,7 +836,16 @@ export default function NewOrderModal({
               handleAdd={() => {
                 // Fecha de entrega por defecto: 4 días hábiles desde hoy
                 const fechaDefecto = addBusinessDays(form.due_date || todayISO(), 4);
-                setItems([...items, { description: "", quantity: 1, due_date: fechaDefecto, price: 0, paid_amount: 0 }]);
+                const newItem = {
+                  id: Date.now() + Math.random(), // ID único temporal
+                  description: "", 
+                  quantity: 1, 
+                  due_date: fechaDefecto, 
+                  price: 0, 
+                  paid_amount: 0,
+                  name: "" // Agregar name para que se muestre en dropdown
+                };
+                setItems([...items, newItem]);
               }}
               handleDelete={idx => setItems(items.filter((_, i) => i !== idx))}
               handleChange={(idx, field, value) => {

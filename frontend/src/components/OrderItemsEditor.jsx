@@ -31,7 +31,7 @@ function OrderItemsEditor({ items, handleAdd, handleDelete, handleChange }) {
         </>
       )}
       {items.map((item, idx) => ( 
-        <div key={idx} className={`grid grid-cols-[2fr_0.7fr_1fr_1fr_1.2fr_0.5fr] gap-1 items-center border-b mb-2 p-2 rounded-lg border border-blue-200 ${
+        <div key={item.id || idx} className={`grid grid-cols-[2fr_0.7fr_1fr_1fr_1.2fr_0.5fr] gap-1 items-center border-b mb-2 p-2 rounded-lg border border-blue-200 ${
           (item.price > 0 && item.paid_amount >= item.price) ? 'bg-green-50' : 
           (item.paid_amount > 0) ? 'bg-blue-50' : ''
         }`}>
