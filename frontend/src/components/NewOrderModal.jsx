@@ -424,11 +424,16 @@ export default function NewOrderModal({
 
     // Para archivos de imagen, ofrecer detección automática
     if (imageFiles.length > 0) {
-      // Si solo hay una imagen, mostrar detección para esa imagen
+      // Si solo hay una imagen, subir y mostrar detección para esa imagen
       if (imageFiles.length === 1) {
         const file = imageFiles[0];
+        
+        // Subir archivo primero
+        await processFiles([file]);
+        
+        // Luego mostrar detección (sin archivo pendiente, ya está subido)
         setCurrentFileForDetection(file);
-        setPendingFiles([file]);
+        setPendingFiles([]);
         setShowAmountDetection(true);
       } else {
         // Si hay múltiples imágenes, preguntar si quiere detección automática
@@ -437,8 +442,13 @@ export default function NewOrderModal({
         );
         
         if (userWantsDetection) {
-          setPendingFiles(imageFiles);
-          setCurrentFileForDetection(imageFiles[0]);
+          // Subir primer archivo y mostrar detección
+          const firstFile = imageFiles[0];
+          await processFiles([firstFile]);
+          
+          // Configurar detección para el primer archivo, resto pendiente para subir después
+          setCurrentFileForDetection(firstFile);
+          setPendingFiles(imageFiles.slice(1)); // Resto de archivos pendientes (aún no subidos)
           setShowAmountDetection(true);
         } else {
           // Procesar todas las imágenes sin detección
@@ -465,8 +475,9 @@ export default function NewOrderModal({
     console.log('📝 NewOrderModal: Adding item:', newItem);
     setItems(prev => [...prev, newItem]);
     
-    // Procesar el archivo actual y continuar con el siguiente
-    await processCurrentFileAndContinue();
+    // NO procesar archivo aquí - ya se debería haber subido antes de la detección
+    // Solo continuar con el siguiente archivo
+    await finishFileProcessing();
     
     showToast(`✅ Monto detectado: $${detectedAmount.toLocaleString('es-CL')}`, 'success');
   };
@@ -474,11 +485,14 @@ export default function NewOrderModal({
   // Función para cancelar detección y procesar archivos normalmente
   const handleDetectionCanceled = async () => {
     try {
-      await processCurrentFileAndContinue();
+      // No reprocessar archivo actual, solo continuar con pendientes
+      await finishFileProcessing();
     } catch (error) {
-      console.error('❌ Error al procesar archivo después de cancelar detección:', error);
-      // En caso de error, solo limpiar el estado sin reprocessar
-      finishFileProcessing();
+      console.error('❌ Error al continuar con archivos pendientes:', error);
+      // En caso de error, solo limpiar el estado
+      setShowAmountDetection(false);
+      setCurrentFileForDetection(null);
+      setPendingFiles([]);
     }
   };
 
@@ -509,14 +523,19 @@ export default function NewOrderModal({
     finishFileProcessing();
     showToast('📄 Archivo omitido', 'info');
   };
-  const finishFileProcessing = () => {
+  const finishFileProcessing = async () => {
     // Remover archivo actual de pendientes
     const remainingFiles = pendingFiles.filter(f => f !== currentFileForDetection);
     setPendingFiles(remainingFiles);
     
     if (remainingFiles.length > 0) {
+      // Subir el siguiente archivo antes de mostrar detección
+      const nextFile = remainingFiles[0];
+      await processFiles([nextFile]);
+      
       // Continuar con el siguiente archivo
-      setCurrentFileForDetection(remainingFiles[0]);
+      setCurrentFileForDetection(nextFile);
+      setPendingFiles(remainingFiles.slice(1)); // Remover el que acabamos de subir
     } else {
       // No hay más archivos, cerrar detección
       setShowAmountDetection(false);
