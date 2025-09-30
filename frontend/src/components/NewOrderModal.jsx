@@ -455,10 +455,10 @@ export default function NewOrderModal({
     // Agregar el monto detectado a los items de la orden
     const newItem = {
       id: Date.now(), // ID temporal
-      name: "Transferencia detectada",
-      description: `Monto detectado automáticamente: $${detectedAmount.toLocaleString('es-CL')}`,
-      price: detectedAmount * 100, // El monto viene en pesos, convertir a centavos
-      paid_amount: detectedAmount * 100, // Marcar como pagado en centavos
+      name: "Abono detectado",
+      description: `Abono detectado automáticamente: $${detectedAmount.toLocaleString('es-CL')}`,
+      price: 0, // El precio del producto queda en 0 para que el usuario lo complete
+      paid_amount: detectedAmount * 100, // Solo el abono se marca con el monto detectado
       quantity: 1
     };
 
@@ -950,7 +950,7 @@ export default function NewOrderModal({
                     <Tag className="w-6 h-6 text-green-500 mx-auto mb-2" />
                     <p className="text-sm text-gray-600 mb-1">Total precio</p>
                     <p className="text-2xl font-bold text-green-600">
-                      {items.reduce((sum, item) => sum + (parseInt(item.price) || 0), 0).toLocaleString('es-CL', { style: 'currency', currency: 'CLP' })}
+                      {Math.round(items.reduce((sum, item) => sum + (parseInt(item.price) || 0), 0) / 100).toLocaleString('es-CL', { style: 'currency', currency: 'CLP' })}
                     </p>
                   </div>
                 </div>
@@ -959,7 +959,7 @@ export default function NewOrderModal({
                     <CheckCircle className="w-6 h-6 text-blue-500 mx-auto mb-2" />
                     <p className="text-sm text-gray-600 mb-1">Total abonado</p>
                     <p className="text-2xl font-bold text-blue-600">
-                      {items.reduce((sum, item) => sum + (parseInt(item.paid_amount) || 0), 0).toLocaleString('es-CL', { style: 'currency', currency: 'CLP' })}
+                      {Math.round(items.reduce((sum, item) => sum + (parseInt(item.paid_amount) || 0), 0) / 100).toLocaleString('es-CL', { style: 'currency', currency: 'CLP' })}
                     </p>
                   </div>
                 </div>
@@ -968,8 +968,8 @@ export default function NewOrderModal({
                     <Clock className="w-6 h-6 text-red-500 mx-auto mb-2" />
                     <p className="text-sm text-gray-600 mb-1">Pendiente</p>
                     <p className="text-2xl font-bold text-red-600">
-                      {(items.reduce((sum, item) => sum + (parseInt(item.price) || 0), 0) - 
-                         items.reduce((sum, item) => sum + (parseInt(item.paid_amount) || 0), 0)).toLocaleString('es-CL', { style: 'currency', currency: 'CLP' })}
+                      {Math.round((items.reduce((sum, item) => sum + (parseInt(item.price) || 0), 0) - 
+                         items.reduce((sum, item) => sum + (parseInt(item.paid_amount) || 0), 0)) / 100).toLocaleString('es-CL', { style: 'currency', currency: 'CLP' })}
                     </p>
                   </div>
                 </div>
