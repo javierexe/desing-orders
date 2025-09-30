@@ -216,15 +216,8 @@ const AmountDetection = ({
                 </div>
               </div>
 
-              {/* Contexto del monto */}
-              {detectionResult.context && (
-                <div className="bg-white border border-green-200 rounded p-3 mb-4">
-                  <p className="text-sm text-gray-600 mb-1">Contexto detectado:</p>
-                  <p className="text-sm text-gray-800 italic">
-                    "{detectionResult.context}"
-                  </p>
-                </div>
-              )}
+              {/* Contexto del monto - OCULTO */}
+              {/* Contexto detectado se oculta por solicitud del usuario */}
 
               {/* Selección de item */}
               <div className="bg-white border border-green-200 rounded p-3 mb-4">

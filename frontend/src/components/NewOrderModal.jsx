@@ -975,18 +975,6 @@ export default function NewOrderModal({
                 ))}
               </div>
             )}
-
-            {imgLoadError && (
-              <div className="mt-3 text-xs text-rose-600">No se pudo cargar la miniatura. 
-                <button type="button" className="underline text-sky-600 inline-flex items-center ml-1" onClick={() => {
-                  const u = (form.abono_images && form.abono_images.length) ? (form.abono_images[0]?.url || form.abono_images[0]) : "";
-                  const url = normalizeServerUrl(u);
-                  window.dispatchEvent(new CustomEvent('open-comprobante-preview', { detail: { url } }));
-                }}>
-                  <ExternalLink className="w-3 h-3 mr-1" />Abrir imagen
-                </button>
-              </div>
-            )}
           </div>
 
           {/* Componente de detección automática de montos */}
