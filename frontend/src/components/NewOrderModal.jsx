@@ -747,8 +747,10 @@ export default function NewOrderModal({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
-      <div className="w-full max-w-2xl rounded-2xl border border-slate-200 bg-white p-5 shadow-xl">
+    <div className="fixed inset-0 z-50 bg-slate-900/40 p-4 overflow-y-auto">
+      <div className="min-h-full flex items-center justify-center py-8">
+        <div className="w-full max-w-2xl rounded-2xl border border-slate-200 bg-white shadow-xl max-h-[90vh] overflow-y-auto">
+          <div className="p-5">
         {/* Header estable con badge del código en modo edición */}
         <div className="mb-4 flex flex-wrap items-center gap-3">
           <h3 className="text-lg font-semibold">
@@ -1079,9 +1081,10 @@ export default function NewOrderModal({
             )}
           </div>
         </form>
+        </div>
       </div>
 
-      {/* Toast notification */}
+      {/* Toast notification dentro del overlay */}
       {toastMessage && (
         <div className="fixed top-4 right-4 z-50 animate-slide-in-right">
           <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-4 max-w-sm">
