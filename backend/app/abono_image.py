@@ -11,6 +11,8 @@ router = APIRouter()
 
 @router.post("/upload-abono-image")
 def upload_abono_image(file: UploadFile = File(...)):
+    print(f"🔄 UPLOAD REQUEST: {file.filename}, {file.content_type}")
+    
     # Validar tipo de archivo
     if not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="Solo se permiten imágenes")

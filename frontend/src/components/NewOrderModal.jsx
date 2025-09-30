@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { Trash, ExternalLink, Eye, Upload, CloudUpload, Check, Clock, Tag, CheckCircle, Calculator, Clipboard, File } from "lucide-react";
 import OrderItemsEditor from "./OrderItemsEditor";
+import AmountDetection from "./AmountDetection";
 import { buildOrderPayload, HttpError } from "../utils/http";
 import { api } from "../lib/api";
 
@@ -114,6 +115,12 @@ export default function NewOrderModal({
   const [previewOpen, setPreviewOpen] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
   const [toastMessage, setToastMessage] = useState(null);
+  
+  // Estados para detección automática de montos
+  const [pendingFiles, setPendingFiles] = useState([]); // Archivos esperando análisis OCR
+  const [showAmountDetection, setShowAmountDetection] = useState(false);
+  const [currentFileForDetection, setCurrentFileForDetection] = useState(null);
+  
   const dropzoneRef = useRef(null);
 
   // Guardamos el estado inicial para dirty-check
@@ -244,7 +251,7 @@ export default function NewOrderModal({
     const files = e.target.files && Array.from(e.target.files);
     if (!files || files.length === 0) return;
     
-    await processFiles(files);
+    await handleFileUploadWithDetection(files);
     
     // Limpiar input file (para permitir re-subir el mismo archivo si se desea)
     try { e.target.value = null; } catch (_) { /* ignore */ }
@@ -330,7 +337,7 @@ export default function NewOrderModal({
       return;
     }
 
-    await processFiles(files);
+    await handleFileUploadWithDetection(files);
   };
 
   const handleKeyDown = (e) => {
@@ -390,10 +397,100 @@ export default function NewOrderModal({
     if (imageFiles.length > 0) {
       console.log('Processing', imageFiles.length, 'pasted images');
       showToast(`📋 ${imageFiles.length} imagen(es) pegada(s) desde portapapeles`, 'success');
-      await processFiles(imageFiles);
+      await handleFileUploadWithDetection(imageFiles);
     } else {
       console.log('No images found in clipboard');
       showToast('❌ No se encontraron imágenes en el portapapeles', 'error');
+    }
+  };
+
+  // Función para detectar si un archivo es una imagen
+  const isImageFile = (file) => {
+    return file && file.type && file.type.startsWith('image/');
+  };
+
+  // Función para interceptar archivos de imagen y ofrecer detección de montos
+  const handleFileUploadWithDetection = async (files) => {
+    if (!files || files.length === 0) return;
+
+    // Filtrar archivos de imagen
+    const imageFiles = Array.from(files).filter(isImageFile);
+    const nonImageFiles = Array.from(files).filter(f => !isImageFile(f));
+
+    // Procesar archivos que no son imágenes directamente
+    if (nonImageFiles.length > 0) {
+      await processFiles(nonImageFiles);
+    }
+
+    // Para archivos de imagen, ofrecer detección automática
+    if (imageFiles.length > 0) {
+      // Si solo hay una imagen, mostrar detección para esa imagen
+      if (imageFiles.length === 1) {
+        const file = imageFiles[0];
+        setCurrentFileForDetection(file);
+        setPendingFiles([file]);
+        setShowAmountDetection(true);
+      } else {
+        // Si hay múltiples imágenes, preguntar si quiere detección automática
+        const userWantsDetection = window.confirm(
+          `Se detectaron ${imageFiles.length} imágenes. ¿Desea habilitar la detección automática de montos para cada una?`
+        );
+        
+        if (userWantsDetection) {
+          setPendingFiles(imageFiles);
+          setCurrentFileForDetection(imageFiles[0]);
+          setShowAmountDetection(true);
+        } else {
+          // Procesar todas las imágenes sin detección
+          await processFiles(imageFiles);
+        }
+      }
+    }
+  };
+
+  // Función para manejar cuando se detecta un monto automáticamente
+  const handleAmountDetected = async (detectedAmount) => {
+    // Agregar el monto detectado a los items de la orden
+    const newItem = {
+      id: Date.now(), // ID temporal
+      name: "Transferencia detectada",
+      description: `Monto detectado automáticamente: ${detectedAmount.toLocaleString('es-CL')}`,
+      price: detectedAmount * 100, // Convertir a centavos
+      paid_amount: detectedAmount * 100, // Marcar como pagado
+      quantity: 1
+    };
+
+    setItems(prev => [...prev, newItem]);
+    
+    // Procesar el archivo actual y continuar con el siguiente
+    await processCurrentFileAndContinue();
+    
+    showToast(`✅ Monto detectado: $${detectedAmount.toLocaleString('es-CL')}`, 'success');
+  };
+
+  // Función para cancelar detección y procesar archivos normalmente
+  const handleDetectionCanceled = async () => {
+    await processCurrentFileAndContinue();
+  };
+
+  // Función para procesar archivo actual y continuar con el siguiente
+  const processCurrentFileAndContinue = async () => {
+    if (currentFileForDetection) {
+      // Procesar archivo actual
+      await processFiles([currentFileForDetection]);
+      
+      // Remover archivo actual de pendientes
+      const remainingFiles = pendingFiles.filter(f => f !== currentFileForDetection);
+      setPendingFiles(remainingFiles);
+      
+      if (remainingFiles.length > 0) {
+        // Continuar con el siguiente archivo
+        setCurrentFileForDetection(remainingFiles[0]);
+      } else {
+        // No hay más archivos, cerrar detección
+        setShowAmountDetection(false);
+        setCurrentFileForDetection(null);
+      }
     }
   };
 
@@ -824,6 +921,18 @@ export default function NewOrderModal({
               </div>
             )}
           </div>
+
+          {/* Componente de detección automática de montos */}
+          {showAmountDetection && currentFileForDetection && (
+            <div className="col-span-full">
+              <AmountDetection
+                file={currentFileForDetection}
+                onAmountDetected={handleAmountDetected}
+                onCancel={handleDetectionCanceled}
+                isVisible={showAmountDetection}
+              />
+            </div>
+          )}
 
           {/* Resumen financiero destacado */}
           {items.length > 0 && (
