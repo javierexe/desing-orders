@@ -917,7 +917,7 @@ export default function NewOrderModal({
                         className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-100 rounded-md transition-colors"
                         onClick={(e) => {
                           e.stopPropagation();
-                          const url = (u.url || u).startsWith('/api') ? (u.url || u) : `/api${(u.url || u)}`;
+                          const url = normalizeServerUrl(u.url || u);
                           window.dispatchEvent(new CustomEvent('open-comprobante-preview', { detail: { url } }));
                         }}
                         title="Ver comprobante"
@@ -943,7 +943,7 @@ export default function NewOrderModal({
               <div className="mt-3 text-xs text-rose-600">No se pudo cargar la miniatura. 
                 <button type="button" className="underline text-sky-600 inline-flex items-center ml-1" onClick={() => {
                   const u = (form.abono_images && form.abono_images.length) ? (form.abono_images[0]?.url || form.abono_images[0]) : "";
-                  const url = u && u.startsWith('/api') ? u : `/api${u}`;
+                  const url = normalizeServerUrl(u);
                   window.dispatchEvent(new CustomEvent('open-comprobante-preview', { detail: { url } }));
                 }}>
                   <ExternalLink className="w-3 h-3 mr-1" />Abrir imagen
