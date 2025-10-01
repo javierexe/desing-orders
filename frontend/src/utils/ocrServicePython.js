@@ -73,6 +73,8 @@ export async function extractTextFromImage(file) {
       throw new Error('Formato de imagen no válido. Use JPEG, PNG o similar.');
     } else if (error.response?.status === 413) {
       throw new Error('Imagen demasiado grande. Máximo 10MB.');
+    } else if (error.response?.status === 503) {
+      throw new Error('Servicio OCR temporalmente no disponible. El sistema está configurándose. Inténtelo nuevamente en unos minutos.');
     } else if (error.code === 'ECONNABORTED') {
       throw new Error('Timeout: El OCR está tardando demasiado. Intente con una imagen más pequeña.');
     } else if (error.response?.data?.error) {
