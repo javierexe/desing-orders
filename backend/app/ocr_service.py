@@ -1,22 +1,36 @@
 """
 Servicio OCR Python usando Tesseract para detección de montos en comprobantes chilenos
 """
-import pytesseract
-import cv2
-import numpy as np
-from PIL import Image
+
+# Importación condicional de dependencias OCR
+try:
+    import pytesseract
+    import cv2
+    import numpy as np
+    from PIL import Image
+    OCR_AVAILABLE = True
+    logger = logging.getLogger(__name__)
+    logger.info("✅ OCR dependencies loaded successfully")
+except ImportError as e:
+    OCR_AVAILABLE = False
+    logger = logging.getLogger(__name__)
+    logger.warning(f"⚠️ OCR dependencies not available: {e}")
+    logger.warning("🔧 OCR functionality will be disabled")
+
 import re
 import logging
 from typing import Optional, Tuple, Dict, Any
 import tempfile
 import os
 
-logger = logging.getLogger(__name__)
-
 def preprocess_image(image_path: str) -> str:
     """
     Preprocesa la imagen para mejorar la precisión del OCR
     """
+    if not OCR_AVAILABLE:
+        logger.error("❌ OCR not available - cannot preprocess image")
+        return image_path
+        
     try:
         # Leer imagen con OpenCV
         img = cv2.imread(image_path)
@@ -160,6 +174,17 @@ def extract_text_from_image(image_path: str) -> Dict[str, Any]:
     """
     Extrae texto de una imagen y detecta montos chilenos
     """
+    if not OCR_AVAILABLE:
+        logger.error("❌ OCR dependencies not available")
+        return {
+            'success': False,
+            'error': 'OCR service not available - missing Tesseract installation',
+            'text': '',
+            'amounts': [],
+            'most_likely_amount': None,
+            'confidence': 0.0
+        }
+        
     try:
         # Preprocesar imagen
         processed_path = preprocess_image(image_path)
@@ -206,6 +231,10 @@ def test_ocr_installation() -> bool:
     """
     Prueba que Tesseract esté instalado y funcionando
     """
+    if not OCR_AVAILABLE:
+        logger.warning("❌ OCR dependencies not available")
+        return False
+        
     try:
         # Crear imagen de prueba simple
         test_img = Image.new('RGB', (200, 100), color='white')

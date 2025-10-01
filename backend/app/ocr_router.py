@@ -17,6 +17,22 @@ async def detect_amount_endpoint(file: UploadFile = File(...)):
     Endpoint para detectar montos en imágenes usando OCR Python
     """
     try:
+        # Verificar si OCR está disponible
+        if not test_ocr_installation():
+            return JSONResponse(
+                status_code=503,
+                content={
+                    'success': False,
+                    'error': 'OCR service temporarily unavailable - Tesseract not installed',
+                    'filename': file.filename,
+                    'extracted_text': '',
+                    'amounts_detected': 0,
+                    'amounts': [],
+                    'most_likely_amount': None,
+                    'confidence': 0.0
+                }
+            )
+        
         # Validar tipo de archivo
         if not file.content_type or not file.content_type.startswith('image/'):
             raise HTTPException(
