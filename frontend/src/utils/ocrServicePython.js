@@ -12,25 +12,31 @@ import { api } from '../lib/api';
  */
 export async function extractTextFromImage(file) {
   try {
-    console.log('🐍 Iniciando OCR Python Backend...', file.name);
+    console.log('🐍 [OCR Python] Iniciando análisis...', {
+      fileName: file.name,
+      fileSize: file.size,
+      fileType: file.type
+    });
     
     // Crear FormData para enviar la imagen
     const formData = new FormData();
     formData.append('file', file);
     
+    console.log('📡 [OCR Python] Enviando a /ocr/detect-amount...');
+    
     // Llamar al endpoint OCR del backend
     const response = await api.post('/ocr/detect-amount', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-      // Timeout más largo para OCR
       timeout: 30000, // 30 segundos
     });
     
-    const result = response.data;
+    console.log('📨 [OCR Python] Respuesta completa:', response);
     
-    if (!result.success) {
-      throw new Error(result.error || 'Error en OCR Python');
+    // La respuesta puede estar directamente en response o en response.data
+    const result = response?.data || response;
+    console.log('📊 [OCR Python] Datos extraídos:', result);
+    
+    if (!result || !result.success) {
+      throw new Error(result?.error || 'Error en OCR Python - respuesta inválida');
     }
     
     console.log('✅ OCR Python exitoso:', {
@@ -106,9 +112,6 @@ export async function testOCRDetailed(file) {
     formData.append('file', file);
     
     const response = await api.post('/ocr/test-ocr', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
       timeout: 30000,
     });
     

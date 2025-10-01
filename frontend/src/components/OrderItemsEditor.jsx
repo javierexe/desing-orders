@@ -62,10 +62,10 @@ function OrderItemsEditor({ items, handleAdd, handleDelete, handleChange }) {
               <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-500">$</span>
               <input
                 type="text"
-                value={item.price ? Math.round(parseInt(item.price) / 100).toLocaleString('es-CL') : ""}
+                value={item.price ? parseInt(item.price).toLocaleString('es-CL') : ""}
                 onChange={e => {
                   const value = e.target.value.replace(/[^0-9]/g, '');
-                  handleChange(idx, "price", (parseInt(value) || 0) * 100); // Convertir pesos a centavos
+                  handleChange(idx, "price", parseInt(value) || 0); // Guardar directamente en pesos
                 }}
                 className="mt-1 w-full rounded-xl border border-slate-300 pl-6 pr-3 py-2 text-right font-mono text-xs"
                 placeholder="0"
@@ -78,13 +78,13 @@ function OrderItemsEditor({ items, handleAdd, handleDelete, handleChange }) {
               <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-500">$</span>
               <input
                 type="text"
-                value={item.paid_amount ? Math.round(parseInt(item.paid_amount) / 100).toLocaleString('es-CL') : ""}
+                value={item.paid_amount ? parseInt(item.paid_amount).toLocaleString('es-CL') : ""}
                 onChange={e => {
                   const value = e.target.value.replace(/[^0-9]/g, '');
                   const numValuePesos = parseInt(value) || 0;
-                  const numValueCentavos = numValuePesos * 100;
-                  if (numValueCentavos <= (item.price || 0)) {
-                    handleChange(idx, "paid_amount", numValueCentavos);
+                  // Guardar directamente en pesos (sin multiplicación por 100)
+                  if (numValuePesos <= (item.price || 0)) {
+                    handleChange(idx, "paid_amount", numValuePesos);
                   }
                 }}
                 className="mt-1 w-full rounded-xl border border-slate-300 pl-6 pr-3 py-2 text-right font-mono text-xs"

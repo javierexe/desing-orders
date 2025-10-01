@@ -78,7 +78,7 @@ function AppInner() {
 
   function showToast(msg, type = "success") {
     setToast({ msg, type });
-    setTimeout(() => setToast(null), 3000);
+    setTimeout(() => setToast(null), 5000);
   }
 
   const filtered = useMemo(() => (

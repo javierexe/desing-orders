@@ -34,8 +34,8 @@ class OrderItem(Base):
     description = Column(String(255), nullable=False)
     quantity = Column(Integer, nullable=False, default=1)
     due_date = Column(Date, nullable=True)
-    price = Column(Integer, nullable=False, default=0)  # Precio del item en centavos
-    paid_amount = Column(Integer, nullable=False, default=0)  # Monto abonado en centavos
+    price = Column(Integer, nullable=False, default=0)  # Precio del item en pesos chilenos
+    paid_amount = Column(Integer, nullable=False, default=0)  # Monto abonado en pesos chilenos
 
     order = relationship("Order", back_populates="items")
 

@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Search, CheckCircle, XCircle, Loader2, Eye, EyeOff } from 'lucide-react';
-import { extractTextFromImage } from '../utils/ocrServicePython'; // Cambiado a OCR Python
+import { extractTextFromImage } from '../utils/ocrServicePython'; // OCR Python real
 import { detectMostLikelyAmount, formatChileanAmount } from '../utils/amountParser';
 
 /**
@@ -60,10 +60,27 @@ const AmountDetection = ({
         throw new Error(ocrResult.error || 'Error en análisis OCR');
       }
 
-      // Detectar montos en el texto
-      const amountResult = detectMostLikelyAmount(ocrResult.text);
+      // **🔧 FIX: Usar directamente los resultados del backend OCR Python (ya procesados correctamente)**
+      console.log('🧠 AmountDetection: Backend OCR result:', ocrResult);
       
-      console.log('💰 AmountDetection: Amount detection result:', amountResult);
+      let amountResult = null;
+      
+      // Si el backend OCR Python detectó un monto, usarlo directamente (ya está en pesos)
+      if (ocrResult.mostLikelyAmount && ocrResult.mostLikelyAmount.amount) {
+        amountResult = {
+          amount: ocrResult.mostLikelyAmount.amount, // Ya está en pesos (ej: 66000)
+          formatted: ocrResult.mostLikelyAmount.formatted, // Ya formateado (ej: "$66.000")
+          confidence: ocrResult.mostLikelyAmount.confidence,
+          context: ocrResult.mostLikelyAmount.context,
+          detectedAmounts: ocrResult.detectedAmounts || []
+        };
+        console.log('✅ AmountDetection: Using backend detection:', amountResult);
+      } else {
+        // Fallback: usar parser frontend solo si backend no detectó nada
+        console.log('⚠️ AmountDetection: Backend no detectó montos, usando fallback frontend...');
+        amountResult = detectMostLikelyAmount(ocrResult.text);
+        console.log('🔄 AmountDetection: Frontend fallback result:', amountResult);
+      }
       
       setDetectionResult({
         ...amountResult,
@@ -117,6 +134,7 @@ const AmountDetection = ({
         
         {!hasStarted && (
           <button
+            type="button"
             onClick={onCancel}
             className="text-gray-400 hover:text-gray-600"
           >
@@ -137,6 +155,7 @@ const AmountDetection = ({
           </p>
           <div className="flex space-x-3 justify-center">
             <button
+              type="button"
               onClick={startAnalysis}
               className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
             >
@@ -144,6 +163,7 @@ const AmountDetection = ({
               <span>Analizar Imagen</span>
             </button>
             <button
+              type="button"
               onClick={onCancel}
               className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
             >
@@ -151,6 +171,7 @@ const AmountDetection = ({
             </button>
             {onSkipFile && (
               <button
+                type="button"
                 onClick={onSkipFile}
                 className="px-3 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors text-sm"
               >
@@ -182,12 +203,14 @@ const AmountDetection = ({
           <p className="text-red-700 text-sm mb-3">{error}</p>
           <div className="flex space-x-2">
             <button
+              type="button"
               onClick={startAnalysis}
               className="px-3 py-1 bg-red-100 text-red-700 rounded text-sm hover:bg-red-200 transition-colors"
             >
               Reintentar
             </button>
             <button
+              type="button"
               onClick={onCancel}
               className="px-3 py-1 bg-gray-100 text-gray-700 rounded text-sm hover:bg-gray-200 transition-colors"
             >
@@ -232,8 +255,8 @@ const AmountDetection = ({
                   <option value="">Selecciona un item...</option>
                   {items.map((item) => (
                     <option key={item.id} value={item.id}>
-                      {item.description || item.name || `Item ${items.indexOf(item) + 1}`} - ${((item.price || 0) / 100).toLocaleString('es-CL')}
-                      {item.paid_amount > 0 && ` (Abonado: $${(item.paid_amount / 100).toLocaleString('es-CL')})`}
+                      {item.description || item.name || `Item ${items.indexOf(item) + 1}`} - ${(item.price || 0).toLocaleString('es-CL')}
+                      {item.paid_amount > 0 && ` (Abonado: $${item.paid_amount.toLocaleString('es-CL')})`}
                     </option>
                   ))}
                 </select>
@@ -242,6 +265,7 @@ const AmountDetection = ({
               {/* Botones de acción */}
               <div className="flex space-x-3 justify-center">
                 <button
+                  type="button"
                   onClick={confirmAmount}
                   className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-2"
                 >
@@ -249,6 +273,7 @@ const AmountDetection = ({
                   <span>Usar este monto</span>
                 </button>
                 <button
+                  type="button"
                   onClick={rejectAmount}
                   className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
                 >
@@ -267,12 +292,14 @@ const AmountDetection = ({
               </p>
               <div className="flex space-x-2">
                 <button
+                  type="button"
                   onClick={startAnalysis}
                   className="px-3 py-1 bg-yellow-100 text-yellow-700 rounded text-sm hover:bg-yellow-200 transition-colors"
                 >
                   Reintentar
                 </button>
                 <button
+                  type="button"
                   onClick={onCancel}
                   className="px-3 py-1 bg-gray-100 text-gray-700 rounded text-sm hover:bg-gray-200 transition-colors"
                 >
@@ -286,6 +313,7 @@ const AmountDetection = ({
           {detectionResult.ocrText && (
             <div className="border-t border-gray-200 pt-4">
               <button
+                type="button"
                 onClick={() => setShowDetails(!showDetails)}
                 className="flex items-center space-x-2 text-sm text-gray-600 hover:text-gray-800 transition-colors"
               >

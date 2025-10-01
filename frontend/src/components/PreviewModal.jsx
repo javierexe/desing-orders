@@ -17,6 +17,8 @@ export default function PreviewModal() {
       const u = e?.detail?.url;
       if (!u) return;
       
+      console.log('🖼️ PreviewModal: Abriendo imagen:', u);
+      
       // Normalizar URL: solo añadir /api a URLs locales, no a URLs completas
       let final = u;
       if (typeof u === "string") {
@@ -29,21 +31,23 @@ export default function PreviewModal() {
         }
       }
       
+      console.log('🔗 PreviewModal: URL final:', final);
+      
       setUrl(final);
       setClosing(false);
       setLoading(true);
       // keep reference to previously focused element
       previousActiveRef.current = document.activeElement;
       // open immediately to show loader
-      setImgSize({ width: Math.round(window.innerWidth * 0.4), height: Math.round(window.innerHeight * 0.4) });
+      setImgSize({ width: Math.round(window.innerWidth * 0.25), height: Math.round(window.innerHeight * 0.25) });
       setOpen(true);
 
       // preload image to get natural size
       const img = new Image();
       img.src = encodeURI(final);
       img.onload = () => {
-        const maxW = Math.round(window.innerWidth * 0.9);
-        const maxH = Math.round(window.innerHeight * 0.9);
+        const maxW = Math.round(window.innerWidth * 0.55); // Reducido de 0.9 a 0.55 (60% menos)
+        const maxH = Math.round(window.innerHeight * 0.55); // Reducido de 0.9 a 0.55 (60% menos)
         let w = img.naturalWidth;
         let h = img.naturalHeight;
         const ratio = Math.min(1, maxW / w, maxH / h);
@@ -55,7 +59,8 @@ export default function PreviewModal() {
         setTimeout(() => closeBtnRef.current?.focus(), 10);
       };
       img.onerror = () => {
-        setImgSize({ width: Math.round(window.innerWidth * 0.8), height: Math.round(window.innerHeight * 0.8) });
+        console.error('Error loading image:', final);
+        setImgSize({ width: Math.round(window.innerWidth * 0.5), height: Math.round(window.innerHeight * 0.5) });
         setLoading(false);
         setTimeout(() => closeBtnRef.current?.focus(), 10);
       };
@@ -124,14 +129,18 @@ export default function PreviewModal() {
           ref={closeBtnRef}
           aria-label="Cerrar preview"
           onClick={() => doClose()}
-          className="absolute right-3 top-3 z-30 inline-flex items-center gap-2 rounded-full bg-white p-2 md:p-3 shadow-lg hover:bg-white/90 focus:outline-none"
-          style={{ backdropFilter: 'blur(6px)' }}
+          className="absolute right-3 top-3 z-30 inline-flex items-center gap-2 rounded-full bg-white/90 p-2 md:p-3 shadow-lg hover:bg-white/95 focus:outline-none backdrop-blur-sm"
         >
           <X className="w-5 h-5 text-slate-900" />
           <span className="hidden md:inline text-sm text-slate-900 font-medium">Cerrar</span>
         </button>
 
-        <div className="w-full h-full flex items-center justify-center bg-white">
+        {/* Header with title - preparado para múltiples comprobantes */}
+        <div className="absolute left-3 top-3 z-30 bg-white/90 backdrop-blur-sm rounded-lg px-3 py-2 shadow-lg">
+          <h3 className="text-sm font-medium text-slate-900">Comprobante de Abono</h3>
+        </div>
+
+        <div className="w-full h-full flex items-center justify-center bg-gray-50">{/* Cambio de bg-white a bg-gray-50 */}
           {loading ? (
             <div className="flex flex-col items-center gap-3" role="status" aria-live="polite">
               <svg className="animate-spin h-12 w-12 text-sky-600" viewBox="0 0 24 24" aria-hidden="true">

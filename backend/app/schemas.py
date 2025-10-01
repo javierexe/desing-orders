@@ -9,8 +9,8 @@ class OrderItemBase(BaseModel):
     description: str
     quantity: int = 1
     due_date: Optional[date] = None
-    price: int = 0  # Precio en centavos
-    paid_amount: int = 0  # Monto abonado en centavos
+    price: int = 0  # Precio en pesos chilenos
+    paid_amount: int = 0  # Monto abonado en pesos chilenos
 
 class OrderItemCreate(OrderItemBase):
     pass
@@ -87,9 +87,9 @@ class OrderOut(OrderBase):
     ready_date: Optional[date] = None
     abono_image_url: Optional[str] = None
     receipts: Optional[List["OrderReceiptOut"]] = []
-    total_price: Optional[int] = None  # Suma de precios de todos los items en centavos
-    total_paid: Optional[int] = None   # Suma de abonos de todos los items en centavos
-    pending_amount: Optional[int] = None  # Diferencia entre total_price y total_paid en centavos
+    total_price: Optional[int] = None  # Suma de precios de todos los items en pesos chilenos
+    total_paid: Optional[int] = None   # Suma de abonos de todos los items en pesos chilenos
+    pending_amount: Optional[int] = None  # Diferencia entre total_price y total_paid en pesos chilenos
 
     # Pydantic v2: usa model_config en lugar de Config
     model_config = ConfigDict(from_attributes=True)

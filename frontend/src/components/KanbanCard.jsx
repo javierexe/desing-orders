@@ -127,21 +127,33 @@ const KanbanCard = React.memo(function KanbanCard({
           <GripVertical className="w-4 h-4 text-slate-400" />
         </button>
       </div>
-      {/* Badge comprobante: si existe abono_image_url, mostrar un icono que abre la imagen */}
-      {order.abono_image_url && (
+      {/* Badge comprobante: mostrar desde abono_image_url o el primer receipt */}
+      {(order.abono_image_url || (order.receipts && order.receipts.length > 0)) && (
         <div className="absolute right-2 bottom-2">
           <button
             type="button"
-            title="Ver comprobante"
+            title={`Ver comprobante${order.receipts?.length > 1 ? ` (${order.receipts.length} disponibles)` : ''}`}
             aria-label="Ver comprobante"
             onClick={(e) => {
               e.stopPropagation();
-              const u = order.abono_image_url.startsWith('/api') ? order.abono_image_url : `/api${order.abono_image_url}`;
-              window.dispatchEvent(new CustomEvent('open-comprobante-preview', { detail: { url: u } }));
+              // Usar abono_image_url si existe, sino el primer receipt
+              const imageUrl = order.abono_image_url || (order.receipts && order.receipts[0]?.url);
+              console.log('👁️ KanbanCard: Abriendo comprobante:', imageUrl);
+              if (imageUrl) {
+                window.dispatchEvent(new CustomEvent('open-comprobante-preview', { 
+                  detail: { url: imageUrl } 
+                }));
+              }
             }}
-            className="inline-block"
+            className="inline-block hover:scale-110 transition-transform relative"
           >
-            <Eye className="w-5 h-5 text-sky-600" />
+            <Eye className="w-5 h-5 text-sky-600 drop-shadow-sm" />
+            {/* Badge de múltiples comprobantes */}
+            {order.receipts?.length > 1 && (
+              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center text-[10px] font-bold">
+                {order.receipts.length}
+              </span>
+            )}
           </button>
         </div>
       )}
@@ -186,22 +198,22 @@ const KanbanCard = React.memo(function KanbanCard({
           </div>
 
           {/* Información financiera */}
-          {(order.total_price > 0 || order.total_paid > 0 || order.pending_amount > 0) && (
-            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+                    {(order.total_price > 0 || order.total_paid > 0 || order.pending_amount > 0) && (
+            <div className="mt-2 text-xs space-y-1">
               {order.total_price > 0 && (
-                <span className="inline-flex items-center rounded-full px-2 py-0.5 bg-green-50 text-green-700 ring-1 ring-green-200">
+                <div className="text-gray-600">
                   Total: {parseInt(order.total_price).toLocaleString('es-CL', { style: 'currency', currency: 'CLP' })}
-                </span>
+                </div>
               )}
               {order.total_paid > 0 && (
-                <span className="inline-flex items-center rounded-full px-2 py-0.5 bg-blue-50 text-blue-700 ring-1 ring-blue-200">
+                <div className="text-green-600 font-medium">
                   Abono: {parseInt(order.total_paid).toLocaleString('es-CL', { style: 'currency', currency: 'CLP' })}
-                </span>
+                </div>
               )}
-              {order.pending_amount > 0 && (
-                <span className="inline-flex items-center rounded-full px-2 py-0.5 bg-red-50 text-red-700 ring-1 ring-red-200">
+              {order.pending_amount !== 0 && (
+                <div className={`font-medium ${order.pending_amount > 0 ? 'text-red-600' : 'text-green-600'}`}>
                   Saldo: {parseInt(order.pending_amount).toLocaleString('es-CL', { style: 'currency', currency: 'CLP' })}
-                </span>
+                </div>
               )}
             </div>
           )}

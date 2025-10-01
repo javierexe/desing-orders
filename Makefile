@@ -39,7 +39,7 @@ dev:
 	@echo "   Backend:  http://$(IP):$(BACKEND_PORT)"
 	@echo "   Frontend: http://$(IP):$(FRONT_PORT)"
 	@bash -lc 'trap "kill 0" INT TERM EXIT; \
-		( cd backend && uvicorn app.main:app --reload --host $(BACKEND_HOST) --port $(BACKEND_PORT) ) & \
+		( cd backend && source ../.venv/bin/activate && uvicorn app.main:app --reload --host $(BACKEND_HOST) --port $(BACKEND_PORT) ) & \
 		( cd frontend && npm run dev -- --host $(FRONT_HOST) --port $(FRONT_PORT) ) & \
 		wait'
 

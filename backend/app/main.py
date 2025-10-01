@@ -67,7 +67,12 @@ def health():
 @app.get("/orders", response_model=List[schemas.OrderOut])
 def list_orders(db: Session = Depends(get_db)):
     from sqlalchemy.orm import joinedload
-    orders = db.query(models.Order).options(joinedload(models.Order.items)).order_by(models.Order.id.desc()).all()
+    orders = db.query(models.Order).options(
+        joinedload(models.Order.items),
+        joinedload(models.Order.receipts)
+    ).order_by(models.Order.id.desc()).all()
+    
+    logger.info(f"📊 Listando {len(orders)} órdenes")
     
     # Agregar totales calculados a cada orden
     result = []
@@ -75,6 +80,11 @@ def list_orders(db: Session = Depends(get_db)):
         totals = calculate_order_totals(order)
         # Map receipts if exist
         receipts = [schemas.OrderReceiptOut(id=r.id, url=r.url, filename=r.filename, storage_key=r.storage_key, uploaded_at=r.uploaded_at) for r in getattr(order, "receipts", [])]
+        
+        logger.info(f"🧾 Orden {order.code}: {len(receipts)} receipts, {len(order.items)} items")
+        if receipts:
+            logger.info(f"📄 Receipts para {order.code}: {[r.filename for r in receipts]}")
+        
         result.append(schemas.OrderOut(
             id=order.id,
             code=order.code,
@@ -135,9 +145,12 @@ def create_order(payload: schemas.OrderCreate, db: Session = Depends(get_db)):
         db.add(order_item)
     db.commit()
     
-    # Recargar la orden completa con sus items
+    # Recargar la orden completa con sus items y receipts
     from sqlalchemy.orm import joinedload
-    order = db.query(models.Order).options(joinedload(models.Order.items)).filter(models.Order.id == order.id).first()
+    order = db.query(models.Order).options(
+        joinedload(models.Order.items),
+        joinedload(models.Order.receipts)
+    ).filter(models.Order.id == order.id).first()
     
     # Calcular totales
     totals = calculate_order_totals(order)
@@ -221,6 +234,13 @@ def update_order(
     # Actualizar ítems si vienen en el payload
     if "items" in data:
         new_items = data["items"]
+        logger.info(f"[PATCH /orders/{code}] Actualizando {len(new_items)} items")
+        for i, item in enumerate(new_items):
+            if isinstance(item, dict):
+                logger.info(f"[PATCH /orders/{code}] Item {i}: desc='{item.get('description')}', price={item.get('price', 0)}, paid_amount={item.get('paid_amount', 0)}")
+            else:
+                logger.info(f"[PATCH /orders/{code}] Item {i}: desc='{item.description}', price={getattr(item, 'price', 0)}, paid_amount={getattr(item, 'paid_amount', 0)}")
+        
         # Eliminar ítems existentes
         db.query(models.OrderItem).filter(models.OrderItem.order_id == order.id).delete()
         db.commit()
@@ -230,7 +250,9 @@ def update_order(
                 order_id=order.id,
                 description=item["description"] if isinstance(item, dict) else item.description,
                 quantity=item["quantity"] if isinstance(item, dict) else item.quantity,
-                due_date=item.get("due_date") if isinstance(item, dict) else item.due_date
+                due_date=item.get("due_date") if isinstance(item, dict) else item.due_date,
+                price=item.get("price", 0) if isinstance(item, dict) else getattr(item, 'price', 0),
+                paid_amount=item.get("paid_amount", 0) if isinstance(item, dict) else getattr(item, 'paid_amount', 0)
             )
             db.add(order_item)
         db.commit()

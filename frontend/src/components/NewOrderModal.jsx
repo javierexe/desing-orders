@@ -155,6 +155,17 @@ export default function NewOrderModal({
               filename: getFileNameFromUrl(order.abono_image_url) 
             }] : []),
       };
+      
+      // 🔍 Debug: Verificar datos de la orden al abrir para editar
+      console.log('🔍 [DEBUG] Datos de orden recibidos:', {
+        code: order.code,
+        receipts: order.receipts,
+        receiptsCount: order.receipts?.length || 0,
+        abono_image_url: order.abono_image_url,
+        items: order.items?.map(i => ({ id: i.id, description: i.description, paid_amount: i.paid_amount })),
+        form_abono_images: next.abono_images
+      });
+      
       setForm(next);
       initialFormRef.current = next;
       setItems(order.items ?? []);
@@ -259,7 +270,7 @@ export default function NewOrderModal({
     const files = e.target.files && Array.from(e.target.files);
     if (!files || files.length === 0) return;
     
-    await handleFileUploadWithDetection(files);
+    await handleFileUpload(files);
     
     // Limpiar input file (para permitir re-subir el mismo archivo si se desea)
     try { e.target.value = null; } catch (_) { /* ignore */ }
@@ -345,7 +356,7 @@ export default function NewOrderModal({
       return;
     }
 
-    await handleFileUploadWithDetection(files);
+    await handleFileUpload(files);
   };
 
   const handleKeyDown = (e) => {
@@ -405,7 +416,7 @@ export default function NewOrderModal({
     if (imageFiles.length > 0) {
       console.log('Processing', imageFiles.length, 'pasted images');
       showToast(`📋 ${imageFiles.length} imagen(es) pegada(s) desde portapapeles`, 'success');
-      await handleFileUploadWithDetection(imageFiles);
+      await handleFileUpload(imageFiles);
     } else {
       console.log('No images found in clipboard');
       showToast('❌ No se encontraron imágenes en el portapapeles', 'error');
@@ -418,47 +429,45 @@ export default function NewOrderModal({
   };
 
   // Función para interceptar archivos de imagen y ofrecer detección de montos
-  const handleFileUploadWithDetection = async (files) => {
-    if (!files || files.length === 0) return;
+  const handleFileUpload = async (newFiles) => {
+    console.log('📁 handleFileUpload called with:', newFiles);
+    
+    const imageFiles = newFiles.filter(isImageFile);
+    const nonImageFiles = newFiles.filter(f => !isImageFile(f));
+    
+    console.log('🖼️ Image files:', imageFiles.length);
+    console.log('📄 Non-image files:', nonImageFiles.length);
 
-    // ✅ VALIDACIÓN: No se pueden subir comprobantes sin items
-    if (items.length === 0) {
-      showToast('❌ Debes agregar al menos un item antes de subir comprobantes', 'error');
-      return;
-    }
-
-    // Filtrar archivos de imagen
-    const imageFiles = Array.from(files).filter(isImageFile);
-    const nonImageFiles = Array.from(files).filter(f => !isImageFile(f));
-
-    // Procesar archivos que no son imágenes directamente
+    // Subir archivos no-imagen normalmente (sin OCR)
     if (nonImageFiles.length > 0) {
+      console.log('⬆️ Uploading non-image files...');
       await processFiles(nonImageFiles);
     }
 
-    // Para archivos de imagen, hacer detección automática siempre
     if (imageFiles.length > 0) {
-      // Si solo hay una imagen, subir y mostrar detección
+      console.log('🔍 Processing image files for OCR...');
+      // Si solo hay una imagen, mostrar detección directamente (sin subir primero)
       if (imageFiles.length === 1) {
         const file = imageFiles[0];
+        console.log('📷 Single image file:', file.name);
         
-        // Subir archivo primero
-        await processFiles([file]);
-        
-        // Luego mostrar detección (sin archivo pendiente, ya está subido)
+        // Mostrar detección directamente (AmountDetection se encarga del upload)
         setCurrentFileForDetection(file);
         setPendingFiles([]);
         setShowAmountDetection(true);
+        console.log('✅ AmountDetection activated for:', file.name);
       } else {
         // Para múltiples imágenes, hacer detección automática en todas
-        // Subir primer archivo y mostrar detección
+        // Mostrar detección para el primer archivo, resto pendiente
         const firstFile = imageFiles[0];
-        await processFiles([firstFile]);
+        console.log('📷 Multiple images, processing first:', firstFile.name);
         
-        // Configurar detección para el primer archivo, resto pendiente para subir después
+        // Configurar detección para el primer archivo, resto pendiente para procesar después
         setCurrentFileForDetection(firstFile);
         setPendingFiles(imageFiles.slice(1)); // Resto de archivos pendientes (aún no subidos)
         setShowAmountDetection(true);
+        console.log('✅ AmountDetection activated for first file:', firstFile.name);
+        console.log('⏳ Pending files:', imageFiles.slice(1).map(f => f.name));
       }
     }
   };
@@ -476,8 +485,8 @@ export default function NewOrderModal({
     setItems(prev => prev.map(item => {
       if (String(item.id) === String(itemId)) { // Comparar como strings para evitar problemas con tipos
         const currentPaid = item.paid_amount || 0;
-        const newPaidAmount = currentPaid + (detectedAmount * 100); // Convertir a centavos
-        console.log(`📝 NewOrderModal: Updating item "${item.description}": paid_amount ${currentPaid} + ${detectedAmount * 100} = ${newPaidAmount}`);
+        const newPaidAmount = currentPaid + detectedAmount; // Directamente en pesos chilenos
+        console.log(`📝 NewOrderModal: Updating item "${item.description}": paid_amount ${currentPaid} + ${detectedAmount} = ${newPaidAmount}`);
         
         return {
           ...item,
@@ -487,11 +496,63 @@ export default function NewOrderModal({
       return item;
     }));
     
+    // **🔧 FIX: Esperar a que se actualice el estado antes de continuar**
+    // Usar setTimeout para asegurar que el setItems se aplique
+    setTimeout(async () => {
+      console.log('⏰ Estado actualizado, continuando con archivo...');
+      await continueAfterAmountDetected(detectedAmount);
+    }, 100);
+  };
+  
+  // Función separada para continuar después de aplicar el abono
+  const continueAfterAmountDetected = async (appliedAmount) => {
+    // **🔧 FIX: Subir la imagen del comprobante también**
+    if (currentFileForDetection) {
+      console.log('📤 Subiendo comprobante después de aplicar abono:', currentFileForDetection.name);
+      try {
+        // Subir archivo a Supabase Storage (mismo código que handleFileUpload)
+        const formData = new FormData();
+        formData.append("file", currentFileForDetection);
+        
+        const res = await fetch("/api/upload-abono-image", {
+          method: "POST",
+          body: formData,
+        });
+        
+        if (!res.ok) {
+          throw new Error(`Upload failed: ${res.status}`);
+        }
+        
+        const uploadResult = await res.json();
+        console.log('📡 Upload response:', uploadResult);
+        
+        // Procesar resultado
+        const url = uploadResult.storage_provider === "supabase" ? uploadResult.url : normalizeServerUrl(uploadResult.url);
+        const imageData = { 
+          url, 
+          storage_key: uploadResult.storage_key, 
+          filename: getFileNameFromUrl(uploadResult.url) 
+        };
+        
+        // **🔧 CRÍTICO: Agregar directamente al estado del formulario**
+        setForm(prevForm => {
+          const newImages = dedupeReceipts([...(prevForm.abono_images || []), imageData]);
+          console.log('🖼️ Agregando comprobante al estado:', newImages);
+          return { ...prevForm, abono_images: newImages };
+        });
+        
+        console.log('✅ Comprobante subido y agregado al estado correctamente');
+      } catch (error) {
+        console.error('❌ Error subiendo comprobante después del OCR:', error);
+        showToast('❌ Error al guardar el comprobante', 'error');
+      }
+    }
+    
     // Limpiar selección de item y continuar con siguiente archivo
     setSelectedItemId(null);
     await finishFileProcessing();
     
-    showToast(`✅ Abono de $${detectedAmount.toLocaleString('es-CL')} aplicado`, 'success');
+    showToast(`✅ Abono de $${appliedAmount.toLocaleString('es-CL')} aplicado`, 'success');
   };
 
   // Función para cancelar detección y procesar archivos normalmente
@@ -613,7 +674,7 @@ export default function NewOrderModal({
     setToastMessage({ message, type });
     setTimeout(() => {
       setToastMessage(null);
-    }, 3000);
+    }, 5000);
   };
 
   async function handleSubmit(e) {
@@ -638,20 +699,37 @@ export default function NewOrderModal({
     // Construimos payload y aseguramos due_date normalizado
     const base = buildOrderPayload(form);
     const dueISO = normalizeDate(form.due_date);
+    
+    // 🔍 DEBUG: Verificar estado antes de guardar
+    console.log('🔍 [DEBUG] Estado antes de guardar:');
+    console.log('📄 form.abono_images:', form.abono_images);
+    console.log('📦 items completos:', items);
+    console.log('💰 items paid_amounts:', items.map(i => ({ 
+      id: i.id, 
+      description: i.description, 
+      paid_amount: i.paid_amount,
+      price: i.price
+    })));
+    
+    const payloadItems = items.map(item => ({
+      description: item.description,
+      due_date: normalizeDate(item.due_date),
+      quantity: Number(item.quantity) || 1,
+      price: Number(item.price) || 0,
+      paid_amount: Number(item.paid_amount) || 0
+    }));
+    
     const payload = {
       ...base,
       ...(dueISO ? { due_date: dueISO } : {}),
       status: normalizeStatus(form.status || "pre-pedido"),
-  // Compatibilidad backend: enviar el primer comprobante (si existe) como abono_image_url (string URL)
-  abono_image_url: (form.abono_images && form.abono_images.length) ? (form.abono_images[0]?.url || form.abono_images[0]) : undefined,
-      items: items.map(item => ({
-        description: item.description,
-        due_date: normalizeDate(item.due_date),
-        quantity: Number(item.quantity) || 1,
-        price: Number(item.price) || 0,
-        paid_amount: Number(item.paid_amount) || 0
-      }))
+      // Compatibilidad backend: enviar el primer comprobante (si existe) como abono_image_url (string URL)
+      abono_image_url: (form.abono_images && form.abono_images.length) ? (form.abono_images[0]?.url || form.abono_images[0]) : undefined,
+      items: payloadItems
     };
+    
+    console.log('📤 [DEBUG] Payload items enviados:', payloadItems);
+    console.log('📤 [DEBUG] Payload completo:', payload);
 
     try {
       let saved;
@@ -690,21 +768,32 @@ export default function NewOrderModal({
         onUpdated?.(saved);
       } else {
         saved = await api.createOrder(payload); // FastAPI devuelve objeto plano: { code, ... }
+        console.log('💾 Orden creada:', saved.code);
+        
         // Si hay comprobantes locales (sin id), persistirlos para asociarlos a la nueva orden
         if (form.abono_images && form.abono_images.length) {
           const toPersist = form.abono_images.filter(a => !a.id);
+          console.log(`💾 Persistiendo ${toPersist.length} comprobantes para orden ${saved.code}:`, toPersist);
+          
           const persisted = [];
           for (const item of toPersist) {
             try {
+              console.log(`📤 Guardando comprobante: ${item.filename} -> ${item.url}`);
               const res = await fetch(`/api/orders/${saved.code}/receipts`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ url: item.url, filename: item.filename })
+                body: JSON.stringify({ 
+                  url: item.url, 
+                  filename: item.filename,
+                  storage_key: item.storage_key 
+                })
               });
               if (res.ok) {
                 const data = await res.json();
+                console.log('✅ Comprobante guardado en BD:', data);
                 persisted.push({ id: data.id, url: data.url, filename: data.filename, uploaded_at: data.uploaded_at });
               } else {
+                console.error('❌ Error guardando comprobante en BD:', await res.text());
                 persisted.push(item);
               }
             } catch (err) {
@@ -1006,7 +1095,7 @@ export default function NewOrderModal({
                     <Tag className="w-6 h-6 text-green-500 mx-auto mb-2" />
                     <p className="text-sm text-gray-600 mb-1">Total precio</p>
                     <p className="text-2xl font-bold text-green-600">
-                      {Math.round(items.reduce((sum, item) => sum + (parseInt(item.price) || 0), 0) / 100).toLocaleString('es-CL', { style: 'currency', currency: 'CLP' })}
+                      {items.reduce((sum, item) => sum + (parseInt(item.price) || 0), 0).toLocaleString('es-CL', { style: 'currency', currency: 'CLP' })}
                     </p>
                   </div>
                 </div>
@@ -1015,7 +1104,7 @@ export default function NewOrderModal({
                     <CheckCircle className="w-6 h-6 text-blue-500 mx-auto mb-2" />
                     <p className="text-sm text-gray-600 mb-1">Total abonado</p>
                     <p className="text-2xl font-bold text-blue-600">
-                      {Math.round(items.reduce((sum, item) => sum + (parseInt(item.paid_amount) || 0), 0) / 100).toLocaleString('es-CL', { style: 'currency', currency: 'CLP' })}
+                      {items.reduce((sum, item) => sum + (parseInt(item.paid_amount) || 0), 0).toLocaleString('es-CL', { style: 'currency', currency: 'CLP' })}
                     </p>
                   </div>
                 </div>
@@ -1024,8 +1113,8 @@ export default function NewOrderModal({
                     <Clock className="w-6 h-6 text-red-500 mx-auto mb-2" />
                     <p className="text-sm text-gray-600 mb-1">Pendiente</p>
                     <p className="text-2xl font-bold text-red-600">
-                      {Math.round((items.reduce((sum, item) => sum + (parseInt(item.price) || 0), 0) - 
-                         items.reduce((sum, item) => sum + (parseInt(item.paid_amount) || 0), 0)) / 100).toLocaleString('es-CL', { style: 'currency', currency: 'CLP' })}
+                      {(items.reduce((sum, item) => sum + (parseInt(item.price) || 0), 0) - 
+                         items.reduce((sum, item) => sum + (parseInt(item.paid_amount) || 0), 0)).toLocaleString('es-CL', { style: 'currency', currency: 'CLP' })}
                     </p>
                   </div>
                 </div>
