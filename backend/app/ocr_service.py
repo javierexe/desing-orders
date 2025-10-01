@@ -2,6 +2,12 @@
 Servicio OCR Python usando Tesseract para detección de montos en comprobantes chilenos
 """
 
+import logging
+import re
+
+# Setup logger
+logger = logging.getLogger(__name__)
+
 # Importación condicional de dependencias OCR
 try:
     import pytesseract
@@ -9,15 +15,11 @@ try:
     import numpy as np
     from PIL import Image
     OCR_AVAILABLE = True
-    logger = logging.getLogger(__name__)
     logger.info("✅ OCR dependencies loaded successfully")
 except ImportError as e:
     OCR_AVAILABLE = False
-    logger = logging.getLogger(__name__)
     logger.warning(f"⚠️ OCR dependencies not available: {e}")
     logger.warning("🔧 OCR functionality will be disabled")
-
-import re
 import logging
 from typing import Optional, Tuple, Dict, Any
 import tempfile
