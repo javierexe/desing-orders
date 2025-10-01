@@ -19,13 +19,14 @@ async def detect_amount_endpoint(file: UploadFile = File(...)):
     try:
         # Verificar si OCR está disponible
         if not test_ocr_installation():
+            logger.warning(f"OCR no disponible para archivo: {file.filename}")
             return JSONResponse(
-                status_code=503,
+                status_code=200,  # Cambiado de 503 a 200 para permitir fallback
                 content={
                     'success': False,
                     'error': 'OCR service temporarily unavailable - Tesseract not installed',
                     'filename': file.filename,
-                    'extracted_text': '',
+                    'extracted_text': 'OCR no disponible - usando fallback frontend',
                     'amounts_detected': 0,
                     'amounts': [],
                     'most_likely_amount': None,

@@ -35,8 +35,18 @@ export async function extractTextFromImage(file) {
     const result = response?.data || response;
     console.log('📊 [OCR Python] Datos extraídos:', result);
     
+    // Si OCR no está disponible, devolver respuesta que permita fallback
     if (!result || !result.success) {
-      throw new Error(result?.error || 'Error en OCR Python - respuesta inválida');
+      console.log('⚠️ [OCR Python] OCR no disponible, permitiendo fallback frontend');
+      return {
+        success: false, // Indica que debe usar fallback
+        text: result?.extracted_text || '',
+        confidence: 0.0,
+        error: result?.error || 'OCR no disponible',
+        // Datos vacíos para que AmountDetection use su parser frontend
+        mostLikelyAmount: null,
+        detectedAmounts: []
+      };
     }
     
     console.log('✅ OCR Python exitoso:', {
