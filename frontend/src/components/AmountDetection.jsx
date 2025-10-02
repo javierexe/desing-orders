@@ -114,7 +114,50 @@ const AmountDetection = ({
    * Rechaza el resultado y permite entrada manual
    */
   const rejectAmount = () => {
-    onCancel();
+    // Solo limpiar resultado, NO cerrar componente
+    setDetectionResult(null);
+    setError(null);
+    setHasStarted(false);
+    // Llamar onAmountDetected con null para limpiar cualquier monto anterior
+    if (onAmountDetected) {
+      onAmountDetected(null, selectedItemId);
+    }
+  };
+
+  /**
+   * Obtener clases CSS según nivel de confianza
+   */
+  const getConfidenceStyles = (confidence) => {
+    const percent = (confidence || 0) * 100;
+    
+    if (percent >= 80) {
+      return {
+        bg: 'bg-green-50',
+        border: 'border-green-200',
+        text: 'text-green-600',
+        titleText: 'text-green-800',
+        amountText: 'text-green-700',
+        icon: 'text-green-600'
+      };
+    } else if (percent >= 60) {
+      return {
+        bg: 'bg-yellow-50',
+        border: 'border-yellow-200', 
+        text: 'text-yellow-600',
+        titleText: 'text-yellow-800',
+        amountText: 'text-yellow-700',
+        icon: 'text-yellow-600'
+      };
+    } else {
+      return {
+        bg: 'bg-red-50',
+        border: 'border-red-200',
+        text: 'text-red-600', 
+        titleText: 'text-red-800',
+        amountText: 'text-red-700',
+        icon: 'text-red-600'
+      };
+    }
   };
 
   if (!isVisible) {
@@ -214,7 +257,7 @@ const AmountDetection = ({
             </button>
             <button
               type="button"
-              onClick={onCancel}
+              onClick={rejectAmount}
               className="px-3 py-1 bg-gray-100 text-gray-700 rounded text-sm hover:bg-gray-200 transition-colors"
             >
               Entrada Manual
@@ -227,23 +270,26 @@ const AmountDetection = ({
       {detectionResult && !error && (
         <div className="space-y-4">
           {detectionResult.amount ? (
-            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-              <div className="flex items-center space-x-2 mb-3">
-                <CheckCircle className="w-5 h-5 text-green-600" />
-                <h4 className="text-green-800 font-medium">Monto detectado</h4>
-              </div>
-              
-              <div className="text-center mb-4">
-                <div className="text-3xl font-bold text-green-700 mb-1">
-                  {formatChileanAmount(detectionResult.amount)}
-                </div>
-                <div className="text-sm text-green-600">
-                  Confianza: {Math.round(detectionResult.confidence || 0)}%
-                </div>
-              </div>
+            (() => {
+              const styles = getConfidenceStyles(detectionResult.confidence);
+              return (
+                <div className={`${styles.bg} ${styles.border} border rounded-lg p-4`}>
+                  <div className="flex items-center space-x-2 mb-3">
+                    <CheckCircle className={`w-5 h-5 ${styles.icon}`} />
+                    <h4 className={`${styles.titleText} font-medium`}>Monto detectado</h4>
+                  </div>
+                  
+                  <div className="text-center mb-4">
+                    <div className={`text-3xl font-bold ${styles.amountText} mb-1`}>
+                      {formatChileanAmount(detectionResult.amount)}
+                    </div>
+                    <div className={`text-sm ${styles.text}`}>
+                      Confianza: {Math.round((detectionResult.confidence || 0) * 100)}%
+                    </div>
+                  </div>
 
-              {/* Contexto del monto - OCULTO */}
-              {/* Contexto detectado se oculta por solicitud del usuario */}
+                  {/* Contexto del monto - OCULTO */}
+                  {/* Contexto detectado se oculta por solicitud del usuario */}
 
               {/* Selección de item */}
               <div className="bg-white border border-green-200 rounded p-3 mb-4">
@@ -283,7 +329,9 @@ const AmountDetection = ({
                   Corregir manualmente
                 </button>
               </div>
-            </div>
+                </div>
+              );
+            })()
           ) : (
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
               <div className="flex items-center space-x-2 mb-3">
@@ -303,7 +351,7 @@ const AmountDetection = ({
                 </button>
                 <button
                   type="button"
-                  onClick={onCancel}
+                  onClick={rejectAmount}
                   className="px-3 py-1 bg-gray-100 text-gray-700 rounded text-sm hover:bg-gray-200 transition-colors"
                 >
                   Entrada Manual
