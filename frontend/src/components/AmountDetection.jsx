@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Search, CheckCircle, XCircle, Loader2, Eye, EyeOff } from 'lucide-react';
-import { extractTextFromImage } from '../utils/ocrServicePython'; // OCR Python real
+import { extractTextFromImage } from '../utils/ocrServiceFrontend'; // OCR Frontend con Tesseract.js
 import { detectMostLikelyAmount, formatChileanAmount } from '../utils/amountParser';
 
 /**
@@ -129,6 +129,9 @@ const AmountDetection = ({
           <Search className="w-5 h-5 text-blue-600" />
           <h3 className="text-lg font-medium text-gray-900">
             Detección Automática de Monto
+            <span className="text-xs text-green-600 ml-2 font-normal">
+              (OCR Frontend)
+            </span>
           </h3>
         </div>
         
