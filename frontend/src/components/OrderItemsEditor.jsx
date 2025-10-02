@@ -2,7 +2,7 @@
 import React from "react";
 import { Trash } from "lucide-react";
 
-function OrderItemsEditor({ items, handleAdd, handleDelete, handleChange }) {
+function OrderItemsEditor({ items, manualEntryItemId, onManualEntryCleared, handleAdd, handleDelete, handleChange }) {
   // Helper para obtener hoy en formato YYYY-MM-DD
   function todayISO() {
     const t = new Date();
@@ -84,10 +84,18 @@ function OrderItemsEditor({ items, handleAdd, handleDelete, handleChange }) {
                   const numValuePesos = parseInt(value) || 0;
                   // Guardar directamente en pesos (sin multiplicación por 100)
                   if (numValuePesos <= (item.price || 0)) {
+                    // Limpiar estado manual al editar
+                    if (manualEntryItemId && String(item.id) === String(manualEntryItemId) && onManualEntryCleared) {
+                      onManualEntryCleared();
+                    }
                     handleChange(idx, "paid_amount", numValuePesos);
                   }
                 }}
-                className="mt-1 w-full rounded-xl border border-slate-300 pl-6 pr-3 py-2 text-right font-mono text-xs"
+                className={`mt-1 w-full rounded-xl border pl-6 pr-3 py-2 text-right font-mono text-xs transition-all duration-300 ${
+                  manualEntryItemId && String(item.id) === String(manualEntryItemId)
+                    ? 'border-orange-400 bg-orange-50 shadow-lg ring-2 ring-orange-200 animate-pulse'
+                    : 'border-slate-300'
+                }`}
                 placeholder="0"
                 title={`Máximo: ${(parseInt(item.price) || 0).toLocaleString('es-CL', { style: 'currency', currency: 'CLP' })}`}
               />

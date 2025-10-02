@@ -121,6 +121,7 @@ export default function NewOrderModal({
   const [showAmountDetection, setShowAmountDetection] = useState(false);
   const [currentFileForDetection, setCurrentFileForDetection] = useState(null);
   const [selectedItemId, setSelectedItemId] = useState(null); // Item seleccionado para vincular comprobante
+  const [manualEntryItemId, setManualEntryItemId] = useState(null); // Item que necesita entrada manual con efecto visual
   
   const dropzoneRef = useRef(null);
 
@@ -187,6 +188,7 @@ export default function NewOrderModal({
     
     // Limpiar estados de detección al abrir modal
     setSelectedItemId(null);
+    setManualEntryItemId(null);
     setShowAmountDetection(false);
     setCurrentFileForDetection(null);
     setPendingFiles([]);
@@ -473,28 +475,41 @@ export default function NewOrderModal({
   };
 
   // Función para manejar cuando se detecta un monto automáticamente
-  const handleAmountDetected = async (detectedAmount, itemId) => {
-    console.log('💰 NewOrderModal: Amount detected:', detectedAmount, 'for item:', itemId);
+  const handleAmountDetected = async (detectedAmount, itemId, mode) => {
+    console.log('💰 NewOrderModal: Amount detected:', detectedAmount, 'for item:', itemId, 'mode:', mode);
     
     if (!itemId) {
       showToast('❌ Debes seleccionar un item para vincular el comprobante', 'error');
       return;
     }
 
-    // Aplicar el abono al item seleccionado
-    setItems(prev => prev.map(item => {
-      if (String(item.id) === String(itemId)) { // Comparar como strings para evitar problemas con tipos
-        const currentPaid = item.paid_amount || 0;
-        const newPaidAmount = currentPaid + detectedAmount; // Directamente en pesos chilenos
-        console.log(`📝 NewOrderModal: Updating item "${item.description}": paid_amount ${currentPaid} + ${detectedAmount} = ${newPaidAmount}`);
-        
-        return {
-          ...item,
-          paid_amount: newPaidAmount
-        };
-      }
-      return item;
-    }));
+    // Si es modo manual, solo marcar el item para entrada manual
+    if (mode === 'manual') {
+      setManualEntryItemId(itemId);
+      // Continuar con el procesamiento del archivo sin aplicar monto
+      setTimeout(async () => {
+        console.log('⏰ Modo manual activado, procesando archivo...');
+        await processCurrentFileAndContinue();
+      }, 100);
+      return;
+    }
+
+    // Aplicar el abono al item seleccionado (solo si hay monto detectado)
+    if (detectedAmount) {
+      setItems(prev => prev.map(item => {
+        if (String(item.id) === String(itemId)) { // Comparar como strings para evitar problemas con tipos
+          const currentPaid = item.paid_amount || 0;
+          const newPaidAmount = currentPaid + detectedAmount; // Directamente en pesos chilenos
+          console.log(`📝 NewOrderModal: Updating item "${item.description}": paid_amount ${currentPaid} + ${detectedAmount} = ${newPaidAmount}`);
+          
+          return {
+            ...item,
+            paid_amount: newPaidAmount
+          };
+        }
+        return item;
+      }));
+    }
     
     // **🔧 FIX: Esperar a que se actualice el estado antes de continuar**
     // Usar setTimeout para asegurar que el setItems se aplique
@@ -922,6 +937,8 @@ export default function NewOrderModal({
           <div className="col-span-full">
             <OrderItemsEditor
               items={items}
+              manualEntryItemId={manualEntryItemId}
+              onManualEntryCleared={() => setManualEntryItemId(null)}
               handleAdd={() => {
                 // Fecha de entrega por defecto: 4 días hábiles desde hoy
                 const fechaDefecto = addBusinessDays(form.due_date || todayISO(), 4);
@@ -938,6 +955,13 @@ export default function NewOrderModal({
               }}
               handleDelete={idx => setItems(items.filter((_, i) => i !== idx))}
               handleChange={(idx, field, value) => {
+                // Si el usuario edita el campo abono, limpiar el estado de entrada manual
+                if (field === 'paid_amount' && manualEntryItemId) {
+                  const editedItem = items[idx];
+                  if (editedItem && String(editedItem.id) === String(manualEntryItemId)) {
+                    setManualEntryItemId(null);
+                  }
+                }
                 setItems(items => items.map((item, i) => i === idx ? { ...item, [field]: value } : item));
               }}
             />
