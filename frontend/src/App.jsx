@@ -6,6 +6,7 @@ import Kanban from "./components/Kanban.jsx";
 import NewOrderModal from "./components/NewOrderModal.jsx";
 import PreviewModal from "./components/PreviewModal.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
+import ProductAdmin from "./pages/ProductAdmin.jsx";
 import { api } from "./lib/api.js";
 
 // Helpers KPI
@@ -187,6 +188,14 @@ function AppInner() {
               )}
               {/* Global preview modal reachable via CustomEvent 'open-comprobante-preview' */}
               <PreviewModal />
+            </Layout>
+          }
+        />
+        <Route
+          path="/admin/products"
+          element={
+            <Layout title="Productos">
+              <ProductAdmin />
             </Layout>
           }
         />

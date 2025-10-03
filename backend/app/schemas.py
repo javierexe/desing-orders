@@ -164,6 +164,32 @@ class ProductoOut(ProductoBase):
     model_config = ConfigDict(from_attributes=True)
 
 
+# ==================== UPSET / BULK SCHEMAS PARA PRODUCTOS ====================
+from pydantic import Field
+
+class ProductoUpsert(BaseModel):
+    id: Optional[int] = None
+    nombre: str
+    categoria_id: Optional[int] = None
+    categoria_nombre: Optional[str] = None
+    presentacion: Optional[str] = None
+    precio_base: Optional[int] = Field(default=None, ge=0)
+    requiere_cotizacion: Optional[bool] = False
+    unidad_medida: Optional[str] = None
+    descripcion: Optional[str] = None
+    activo: Optional[bool] = True
+
+class ProductoBulkUpsertRequest(BaseModel):
+    updates: List[ProductoUpsert] = []
+    deletes: List[int] = []
+    new_categories: List[str] = []
+
+class ProductoBulkUpsertResponse(BaseModel):
+    rows: List[ProductoOut] = []
+    created_categories: List[CategoriaOut] = []
+
+
+
 # ==================== CLIENTES ====================
 class ClienteBase(BaseModel):
     nombre: str

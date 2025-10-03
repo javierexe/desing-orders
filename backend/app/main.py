@@ -305,6 +305,23 @@ def get_categorias(db: Session = Depends(get_db)):
     return categorias
 
 
+@app.post("/categorias", response_model=schemas.CategoriaOut, status_code=201)
+def create_categoria(payload: schemas.CategoriaCreate, db: Session = Depends(get_db)):
+    """Crea una categoría, validando duplicados por nombre case-insensitive"""
+    nombre_norm = payload.nombre.strip()
+    if not nombre_norm:
+        raise HTTPException(status_code=400, detail="Nombre de categoría vacío")
+    # Case-insensitive search
+    existing = db.query(models.Categoria).filter(models.Categoria.nombre.ilike(nombre_norm)).first()
+    if existing:
+        raise HTTPException(status_code=409, detail="Categoría ya existe")
+    cat = models.Categoria(nombre=nombre_norm, descripcion=payload.descripcion, icono=payload.icono)
+    db.add(cat)
+    db.commit()
+    db.refresh(cat)
+    return cat
+
+
 @app.get("/productos", response_model=List[schemas.ProductoOut])
 def get_productos(
     categoria_id: Optional[int] = None,
@@ -363,6 +380,116 @@ def create_producto(producto: schemas.ProductoCreate, db: Session = Depends(get_
     db.commit()
     db.refresh(nuevo_producto)
     return nuevo_producto
+
+
+@app.post("/productos/bulk", response_model=schemas.ProductoBulkUpsertResponse)
+def bulk_upsert_products(payload: schemas.ProductoBulkUpsertRequest, db: Session = Depends(get_db)):
+    """Realiza upsert masivo de productos y soft-deletes.
+    - updates: si viene id, intenta actualizar; si no, crea.
+    - deletes: lista de ids a desactivar (activo=False)
+    - new_categories: lista de nombres de categoría a crear si no existen
+    Todo se realiza en una transacción.
+    """
+    created_categories = []
+    processed_rows = []
+    try:
+        # Normalizar y crear new_categories primero
+        for nombre in payload.new_categories or []:
+            n = nombre.strip()
+            if not n:
+                continue
+            # case-insensitive
+            exist = db.query(models.Categoria).filter(models.Categoria.nombre.ilike(n)).first()
+            if not exist:
+                cat = models.Categoria(nombre=n)
+                db.add(cat)
+                db.flush()
+                created_categories.append(cat)
+
+        # Procesar updates
+        for up in payload.updates or []:
+            # resolver categoria_nombre a categoria_id si viene
+            cat_id = up.categoria_id
+            if getattr(up, 'categoria_nombre', None):
+                name = up.categoria_nombre.strip()
+                if name:
+                    cat = db.query(models.Categoria).filter(models.Categoria.nombre.ilike(name)).first()
+                    if not cat:
+                        cat = models.Categoria(nombre=name)
+                        db.add(cat)
+                        db.flush()
+                        created_categories.append(cat)
+                    cat_id = cat.id
+
+            if up.id:
+                # actualizar existente
+                prod = db.query(models.Producto).filter(models.Producto.id == up.id).first()
+                if not prod:
+                    # crear si no existe
+                    prod = models.Producto(
+                        nombre=up.nombre,
+                        categoria_id=cat_id,
+                        presentacion=up.presentacion,
+                        precio_base=up.precio_base,
+                        requiere_cotizacion=bool(up.requiere_cotizacion),
+                        unidad_medida=up.unidad_medida,
+                        descripcion=up.descripcion,
+                        activo=bool(up.activo)
+                    )
+                    db.add(prod)
+                    db.flush()
+                else:
+                    prod.nombre = up.nombre
+                    prod.categoria_id = cat_id
+                    prod.presentacion = up.presentacion
+                    prod.precio_base = up.precio_base
+                    prod.requiere_cotizacion = bool(up.requiere_cotizacion)
+                    prod.unidad_medida = up.unidad_medida
+                    prod.descripcion = up.descripcion
+                    prod.activo = bool(up.activo)
+                    db.add(prod)
+                db.flush()
+                processed_rows.append(prod)
+            else:
+                # crear nuevo
+                prod = models.Producto(
+                    nombre=up.nombre,
+                    categoria_id=cat_id,
+                    presentacion=up.presentacion,
+                    precio_base=up.precio_base,
+                    requiere_cotizacion=bool(up.requiere_cotizacion),
+                    unidad_medida=up.unidad_medida,
+                    descripcion=up.descripcion,
+                    activo=bool(up.activo)
+                )
+                db.add(prod)
+                db.flush()
+                processed_rows.append(prod)
+
+        # Procesar deletes como soft-delete
+        for did in payload.deletes or []:
+            p = db.query(models.Producto).filter(models.Producto.id == did).first()
+            if p:
+                p.activo = False
+                db.add(p)
+
+        db.commit()
+
+        # Refrescar rows para devolver con relaciones
+        from sqlalchemy.orm import joinedload
+        result_rows = []
+        for prod in processed_rows:
+            r = db.query(models.Producto).options(joinedload(models.Producto.categoria)).filter(models.Producto.id == prod.id).first()
+            if r:
+                result_rows.append(r)
+
+        return schemas.ProductoBulkUpsertResponse(
+            rows=result_rows,
+            created_categories=created_categories
+        )
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.put("/productos/{producto_id}", response_model=schemas.ProductoOut)
