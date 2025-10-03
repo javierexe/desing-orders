@@ -46,7 +46,7 @@ function OrderItemsEditor({ items, manualEntryItemId, onManualEntryCleared, hand
     return `${y}-${m}-${d}`;
   }
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       <div className="flex items-center justify-between mb-2">
         <h4 className="font-semibold text-md">Ítems del pedido</h4>
         <button type="button" onClick={handleAdd} className="rounded-xl bg-sky-100 px-3 py-1 text-sm font-medium text-sky-700 hover:bg-sky-200">+ Agregar ítem</button>
@@ -55,38 +55,37 @@ function OrderItemsEditor({ items, manualEntryItemId, onManualEntryCleared, hand
       {items.length > 0 && (
         <>
           {/* Header only on md+ to save space on mobile */}
-          <div className="hidden md:grid grid-cols-[2fr_0.7fr_1fr_1fr_1.2fr_0.5fr] gap-2 items-center text-xs font-semibold text-slate-600 mb-2 px-3">
+          <div className="grid grid-cols-[2fr_0.7fr_1fr_1fr_1.2fr_0.5fr] gap-2 items-center text-sm font-semibold text-slate-600 mb-2 px-3">
             <div>Producto</div>
             <div className="text-center">Cant.</div>
-            <div className="text-right">Precio Total</div>
-            <div className="text-right">Abono</div>
+            <div className="text-center">Precio Total</div>
+            <div className="text-center">Abono</div>
             <div>Fecha Entrega</div>
-            <div className="text-center">Acciones</div>
           </div>
         </>
       )}
       {items.map((item, idx) => ( 
-        <div key={item.id || idx} className={`border-b mb-3 p-3 rounded-lg border ${
+        <div key={item.id || idx} className={`border p-1 rounded-lg border ${
           (item.price > 0 && item.paid_amount >= item.price) ? 'bg-green-50 border-green-200' : 
           (item.paid_amount > 0) ? 'bg-blue-50 border-blue-200' : 'bg-white border-blue-200'
         } shadow-sm`}>
           
           {/* Grid de campos del item */}
-          <div className="grid grid-cols-1 md:grid-cols-[2fr_0.7fr_1fr_1fr_1.2fr_0.5fr] gap-2 items-center">
+          <div className="grid grid-cols-1 md:grid-cols-[2fr_0.7fr_1fr_1fr_1.2fr_0.5fr] gap-1 items-center ">
             
             {/* Columna 1: Autocompletado de producto */}
             <label className="text-sm flex flex-col md:flex-row md:items-center">
-              {items.length === 1 ? null : <span className="text-xs font-semibold text-slate-600 mb-1">Producto</span>}
+              <span className="sr-only">Producto</span>
               <ProductAutocomplete
                 value={item.description}
                 onSelect={(producto) => handleProductSelect(idx, producto)}
-                placeholder="Buscar o escribir producto..."
+                placeholder="Busca el producto..."
               />
             </label>
 
             {/* Columna 2: Cantidad */}
             <label className="text-sm flex flex-col md:flex-row md:items-center">
-              {items.length === 1 ? null : <span className="text-xs font-semibold text-slate-600 mb-1">Cant.</span>}
+              <span className="sr-only">Cantidad</span>
               <input
                 type="number"
                 min={1}
@@ -97,7 +96,7 @@ function OrderItemsEditor({ items, manualEntryItemId, onManualEntryCleared, hand
             </label>
             {/* Columna 3: Precio Total */}
             <label className="text-sm flex flex-col md:flex-row md:items-center">
-              {items.length === 1 ? null : <span className="text-xs font-semibold text-slate-600 mb-1">Precio</span>}
+              <span className="sr-only">Precio total</span>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-500 font-semibold">$</span>
                 <input
@@ -115,7 +114,7 @@ function OrderItemsEditor({ items, manualEntryItemId, onManualEntryCleared, hand
 
             {/* Columna 4: Abono */}
             <label className="text-sm flex flex-col md:flex-row md:items-center">
-              {items.length === 1 ? null : <span className="text-xs font-semibold text-slate-600 mb-1">Abono</span>}
+              <span className="sr-only">Abono</span>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-500 font-semibold">$</span>
                 <input
@@ -144,7 +143,7 @@ function OrderItemsEditor({ items, manualEntryItemId, onManualEntryCleared, hand
 
             {/* Columna 5: Fecha entrega */}
             <label className="text-sm flex flex-col md:flex-row md:items-center">
-              {items.length === 1 ? null : <span className="text-xs font-semibold text-slate-600 mb-1">Fecha</span>}
+              <span className="sr-only">Fecha entrega</span>
               <input
                 type="date"
                 value={item.due_date}
