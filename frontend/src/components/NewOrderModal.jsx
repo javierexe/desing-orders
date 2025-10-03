@@ -853,7 +853,7 @@ export default function NewOrderModal({
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/40 p-4 overflow-y-auto">
       <div className="min-h-full flex items-center justify-center py-8">
-        <div className="w-full max-w-2xl rounded-2xl border border-slate-200 bg-white shadow-xl max-h-[90vh] overflow-y-auto">
+  <div className="w-full max-w-3xl rounded-2xl border border-slate-200 bg-white shadow-xl max-h-[90vh] overflow-y-auto">
           <div className="p-5">
         {/* Header estable con badge del código en modo edición */}
         <div className="mb-4 flex flex-wrap items-center gap-3">
@@ -876,7 +876,7 @@ export default function NewOrderModal({
               value={form.title}
               onChange={(e) => setForm({ ...form, title: e.target.value })}
               className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 outline-none focus:ring-2 focus:ring-sky-400"
-              placeholder="Catálogo 2025"
+              placeholder="Nombre del proyecto"
             />
           </label>
           
@@ -887,7 +887,7 @@ export default function NewOrderModal({
               value={form.client_name}
               onChange={(e) => setForm({ ...form, client_name: e.target.value })}
               className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 outline-none focus:ring-2 focus:ring-sky-400"
-              placeholder="Acme Ltda."
+              placeholder="Ingrese el nombre del cliente"
             />
           </label>
 

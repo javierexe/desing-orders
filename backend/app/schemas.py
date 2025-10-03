@@ -110,3 +110,88 @@ class OrderReceiptOut(OrderReceiptBase):
 
 OrderBase.model_rebuild()
 
+
+# ==================== CATEGORIAS ====================
+class CategoriaBase(BaseModel):
+    nombre: str
+    descripcion: Optional[str] = None
+    icono: Optional[str] = None
+
+class CategoriaCreate(CategoriaBase):
+    pass
+
+class CategoriaOut(CategoriaBase):
+    id: int
+    activo: bool
+    
+    model_config = ConfigDict(from_attributes=True)
+
+
+# ==================== PRODUCTOS ====================
+class ProductoBase(BaseModel):
+    nombre: str
+    categoria_id: Optional[int] = None
+    descripcion: Optional[str] = None
+    presentacion: Optional[str] = None
+    precio_base: Optional[int] = None  # Precio en pesos chilenos
+    requiere_cotizacion: bool = False
+    unidad_medida: Optional[str] = None
+    tags: Optional[List[str]] = []
+    especificaciones: Optional[dict] = None  # JSONB field
+
+class ProductoCreate(ProductoBase):
+    pass
+
+class ProductoUpdate(BaseModel):
+    nombre: Optional[str] = None
+    categoria_id: Optional[int] = None
+    descripcion: Optional[str] = None
+    presentacion: Optional[str] = None
+    precio_base: Optional[int] = None
+    requiere_cotizacion: Optional[bool] = None
+    unidad_medida: Optional[str] = None
+    tags: Optional[List[str]] = None
+    especificaciones: Optional[dict] = None
+    activo: Optional[bool] = None
+
+class ProductoOut(ProductoBase):
+    id: int
+    activo: bool
+    created_at: datetime
+    updated_at: datetime
+    categoria: Optional[CategoriaOut] = None  # Relación con categoría
+    
+    model_config = ConfigDict(from_attributes=True)
+
+
+# ==================== CLIENTES ====================
+class ClienteBase(BaseModel):
+    nombre: str
+    email: Optional[str] = None
+    telefono: Optional[str] = None
+    direccion: Optional[str] = None
+    rut: Optional[str] = None
+    tipo: Literal["particular", "empresa"] = "particular"
+    preferencias: Optional[dict] = None  # JSONB field
+
+class ClienteCreate(ClienteBase):
+    pass
+
+class ClienteUpdate(BaseModel):
+    nombre: Optional[str] = None
+    email: Optional[str] = None
+    telefono: Optional[str] = None
+    direccion: Optional[str] = None
+    rut: Optional[str] = None
+    tipo: Optional[Literal["particular", "empresa"]] = None
+    preferencias: Optional[dict] = None
+    activo: Optional[bool] = None
+
+class ClienteOut(ClienteBase):
+    id: int
+    activo: bool
+    created_at: datetime
+    updated_at: datetime
+    
+    model_config = ConfigDict(from_attributes=True)
+

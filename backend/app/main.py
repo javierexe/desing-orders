@@ -294,3 +294,102 @@ def delete_order(code: str, db: Session = Depends(get_db)):
     db.delete(order)
     db.commit()
     return Response(status_code=204)
+
+
+# ==================== ENDPOINTS DE PRODUCTOS ====================
+
+@app.get("/categorias", response_model=List[schemas.CategoriaOut])
+def get_categorias(db: Session = Depends(get_db)):
+    """Obtiene todas las categorías activas"""
+    categorias = db.query(models.Categoria).filter(models.Categoria.activo == True).all()
+    return categorias
+
+
+@app.get("/productos", response_model=List[schemas.ProductoOut])
+def get_productos(
+    categoria_id: Optional[int] = None,
+    search: Optional[str] = None,
+    activo: bool = True,
+    db: Session = Depends(get_db)
+):
+    """
+    Obtiene productos con filtros opcionales:
+    - categoria_id: filtra por categoría
+    - search: busca en nombre y descripción
+    - activo: solo productos activos (default True)
+    """
+    from sqlalchemy.orm import joinedload
+    
+    query = db.query(models.Producto).options(joinedload(models.Producto.categoria)).filter(models.Producto.activo == activo)
+    
+    if categoria_id:
+        query = query.filter(models.Producto.categoria_id == categoria_id)
+    
+    if search:
+        search_pattern = f"%{search}%"
+        query = query.filter(
+            (models.Producto.nombre.ilike(search_pattern)) |
+            (models.Producto.descripcion.ilike(search_pattern))
+        )
+    
+    productos = query.order_by(models.Producto.nombre).all()
+    return productos
+
+
+@app.get("/productos/{producto_id}", response_model=schemas.ProductoOut)
+def get_producto(producto_id: int, db: Session = Depends(get_db)):
+    """Obtiene un producto por ID"""
+    producto = db.query(models.Producto).filter(models.Producto.id == producto_id).first()
+    if not producto:
+        raise HTTPException(status_code=404, detail="Producto no encontrado")
+    return producto
+
+
+@app.post("/productos", response_model=schemas.ProductoOut, status_code=201)
+def create_producto(producto: schemas.ProductoCreate, db: Session = Depends(get_db)):
+    """Crea un nuevo producto"""
+    nuevo_producto = models.Producto(
+        nombre=producto.nombre,
+        categoria_id=producto.categoria_id,
+        descripcion=producto.descripcion,
+        presentacion=producto.presentacion,
+        precio_base=producto.precio_base,
+        requiere_cotizacion=producto.requiere_cotizacion,
+        unidad_medida=producto.unidad_medida,
+        tags=producto.tags,
+        especificaciones=producto.especificaciones
+    )
+    db.add(nuevo_producto)
+    db.commit()
+    db.refresh(nuevo_producto)
+    return nuevo_producto
+
+
+@app.put("/productos/{producto_id}", response_model=schemas.ProductoOut)
+def update_producto(producto_id: int, producto: schemas.ProductoUpdate, db: Session = Depends(get_db)):
+    """Actualiza un producto existente"""
+    db_producto = db.query(models.Producto).filter(models.Producto.id == producto_id).first()
+    if not db_producto:
+        raise HTTPException(status_code=404, detail="Producto no encontrado")
+    
+    # Actualizar solo los campos enviados
+    update_data = producto.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(db_producto, field, value)
+    
+    db.commit()
+    db.refresh(db_producto)
+    return db_producto
+
+
+@app.delete("/productos/{producto_id}", status_code=204)
+def delete_producto(producto_id: int, db: Session = Depends(get_db)):
+    """Elimina (desactiva) un producto"""
+    producto = db.query(models.Producto).filter(models.Producto.id == producto_id).first()
+    if not producto:
+        raise HTTPException(status_code=404, detail="Producto no encontrado")
+    
+    # Desactivar en lugar de eliminar
+    producto.activo = False
+    db.commit()
+    return Response(status_code=204)

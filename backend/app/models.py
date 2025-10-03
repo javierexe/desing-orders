@@ -51,3 +51,56 @@ class OrderReceipt(Base):
     uploaded_at = Column(Date, nullable=False)
 
     order = relationship("Order", back_populates="receipts")
+
+
+# ==================== MODELOS DE CATÁLOGO ====================
+
+from sqlalchemy import Boolean, DateTime, ARRAY, JSON
+from datetime import datetime
+
+class Categoria(Base):
+    __tablename__ = "categorias"
+
+    id = Column(Integer, primary_key=True, index=True)
+    nombre = Column(String(100), nullable=False, unique=True)
+    descripcion = Column(Text, nullable=True)
+    icono = Column(String(50), nullable=True)
+    activo = Column(Boolean, default=True, nullable=False)
+    
+    productos = relationship("Producto", back_populates="categoria")
+
+
+class Producto(Base):
+    __tablename__ = "productos"
+
+    id = Column(Integer, primary_key=True, index=True)
+    nombre = Column(String(255), nullable=False)
+    categoria_id = Column(Integer, ForeignKey("categorias.id"), nullable=True, index=True)
+    descripcion = Column(Text, nullable=True)
+    presentacion = Column(String(255), nullable=True)
+    precio_base = Column(Integer, nullable=True)  # Precio en pesos chilenos
+    requiere_cotizacion = Column(Boolean, default=False, nullable=False)
+    unidad_medida = Column(String(50), nullable=True)
+    tags = Column(ARRAY(String), nullable=True)
+    especificaciones = Column(JSON, nullable=True)
+    activo = Column(Boolean, default=True, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    
+    categoria = relationship("Categoria", back_populates="productos")
+
+
+class Cliente(Base):
+    __tablename__ = "clientes"
+
+    id = Column(Integer, primary_key=True, index=True)
+    nombre = Column(String(255), nullable=False)
+    email = Column(String(255), nullable=True, index=True)
+    telefono = Column(String(50), nullable=True)
+    direccion = Column(Text, nullable=True)
+    rut = Column(String(20), nullable=True, unique=True)
+    tipo = Column(String(20), default="particular", nullable=False)  # particular|empresa
+    preferencias = Column(JSON, nullable=True)
+    activo = Column(Boolean, default=True, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
