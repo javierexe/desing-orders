@@ -76,8 +76,18 @@ def upload_abono_image(file: UploadFile = File(...)):
 
 @router.get("/uploads/comprobantes/{filename}")
 def get_abono_image(filename: str):
-    """Endpoint para servir imágenes almacenadas localmente (fallback)"""
+    """
+    Endpoint para servir imágenes almacenadas localmente (fallback para desarrollo)
+    
+    IMPORTANTE: En producción, las imágenes DEBEN estar en Supabase Storage.
+    Este endpoint solo funciona para archivos guardados localmente durante desarrollo.
+    """
     path = os.path.join(UPLOAD_DIR, filename)
     if not os.path.exists(path):
-        raise HTTPException(status_code=404, detail="Imagen no encontrada")
+        print(f"⚠️ Archivo no encontrado localmente: {filename}")
+        print(f"💡 Consejo: Este archivo debería estar en Supabase Storage, no local")
+        raise HTTPException(
+            status_code=404, 
+            detail="Imagen no encontrada. Si estás en producción, asegúrate de que las imágenes se suban a Supabase Storage."
+        )
     return FileResponse(path)
