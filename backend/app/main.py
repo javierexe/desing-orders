@@ -382,6 +382,41 @@ def create_producto(producto: schemas.ProductoCreate, db: Session = Depends(get_
     return nuevo_producto
 
 
+def generar_codigo_producto(db: Session, categoria_id: int = None):
+    """Genera código único para producto tipo PAP-001 basado en categoría"""
+    import time
+    
+    # Obtener prefijo de categoría
+    prefijo = "GEN"
+    if categoria_id:
+        cat = db.query(models.Categoria).filter(models.Categoria.id == categoria_id).first()
+        if cat and cat.nombre:
+            prefijo = cat.nombre[:3].upper().replace(" ", "")
+    
+    # Contar productos con ese prefijo para obtener siguiente número
+    from sqlalchemy import func
+    count = db.query(func.count(models.Producto.id)).filter(
+        models.Producto.codigo.like(f"{prefijo}-%")
+    ).scalar() or 0
+    
+    # Generar código
+    numero = count + 1
+    codigo = f"{prefijo}-{str(numero).zfill(3)}"
+    
+    # Verificar unicidad (por si hay conflicto)
+    max_intentos = 10
+    for _ in range(max_intentos):
+        existe = db.query(models.Producto).filter(models.Producto.codigo == codigo).first()
+        if not existe:
+            return codigo
+        # Si existe, incrementar
+        numero += 1
+        codigo = f"{prefijo}-{str(numero).zfill(3)}"
+    
+    # Fallback: usar timestamp
+    return f"{prefijo}-{int(time.time() % 10000)}"
+
+
 @app.post("/productos/bulk", response_model=schemas.ProductoBulkUpsertResponse)
 def bulk_upsert_products(payload: schemas.ProductoBulkUpsertRequest, db: Session = Depends(get_db)):
     """Realiza upsert masivo de productos y soft-deletes.
@@ -389,6 +424,7 @@ def bulk_upsert_products(payload: schemas.ProductoBulkUpsertRequest, db: Session
     - deletes: lista de ids a desactivar (activo=False)
     - new_categories: lista de nombres de categoría a crear si no existen
     Todo se realiza en una transacción.
+    Genera códigos automáticamente para productos nuevos.
     """
     created_categories = []
     processed_rows = []
@@ -425,8 +461,11 @@ def bulk_upsert_products(payload: schemas.ProductoBulkUpsertRequest, db: Session
                 # actualizar existente
                 prod = db.query(models.Producto).filter(models.Producto.id == up.id).first()
                 if not prod:
-                    # crear si no existe
+                    # crear si no existe (tiene id pero no se encontró)
+                    # Generar código si no viene
+                    codigo = up.codigo if up.codigo else generar_codigo_producto(db, cat_id)
                     prod = models.Producto(
+                        codigo=codigo,
                         nombre=up.nombre,
                         categoria_id=cat_id,
                         presentacion=up.presentacion,
@@ -439,6 +478,7 @@ def bulk_upsert_products(payload: schemas.ProductoBulkUpsertRequest, db: Session
                     db.add(prod)
                     db.flush()
                 else:
+                    # Actualizar producto existente (no modificar codigo si ya existe)
                     prod.nombre = up.nombre
                     prod.categoria_id = cat_id
                     prod.presentacion = up.presentacion
@@ -451,8 +491,11 @@ def bulk_upsert_products(payload: schemas.ProductoBulkUpsertRequest, db: Session
                 db.flush()
                 processed_rows.append(prod)
             else:
-                # crear nuevo
+                # crear nuevo producto (sin id)
+                # Generar código automáticamente
+                codigo = generar_codigo_producto(db, cat_id)
                 prod = models.Producto(
+                    codigo=codigo,
                     nombre=up.nombre,
                     categoria_id=cat_id,
                     presentacion=up.presentacion,

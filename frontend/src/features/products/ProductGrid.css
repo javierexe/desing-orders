@@ -1,0 +1,50 @@
+/* Custom styles for react-data-grid integration */
+.rdg {
+  --rdg-selection-color: rgb(2 132 199); /* sky-600 */
+  --rdg-header-background-color: rgb(248 250 252); /* slate-50 */
+  --rdg-header-color: rgb(51 65 85); /* slate-700 */
+  --rdg-row-hover-background-color: rgb(240 249 255); /* sky-50 */
+  --rdg-border-color: rgb(226 232 240); /* slate-200 */
+  font-size: 0.875rem; /* text-sm */
+  border-radius: 0 0 1rem 1rem;
+  overflow: hidden;
+}
+
+.rdg-cell {
+  padding: 0.5rem 0.75rem;
+  border-right: 1px solid var(--rdg-border-color);
+}
+
+.rdg-header-row {
+  font-weight: 600;
+  border-bottom: 2px solid var(--rdg-border-color);
+}
+
+.rdg-row {
+  transition: background-color 0.15s;
+}
+
+.rdg-row:hover {
+  background-color: var(--rdg-row-hover-background-color);
+}
+
+.rdg-row.rdg-row-selected {
+  background-color: rgb(224 242 254); /* sky-100 */
+}
+
+.rdg-checkbox-label {
+  cursor: pointer;
+}
+
+.rdg-checkbox-label input[type="checkbox"] {
+  width: 1rem;
+  height: 1rem;
+  border-radius: 0.25rem;
+  border-color: rgb(203 213 225); /* slate-300 */
+  color: rgb(2 132 199); /* sky-600 */
+}
+
+.rdg-checkbox-label input[type="checkbox"]:focus {
+  ring: 2px;
+  ring-color: rgb(56 189 248); /* sky-400 */
+}

@@ -109,7 +109,7 @@ const AmountDetection = ({
    * Obtener clases CSS según nivel de confianza
    */
   const getConfidenceStyles = (confidence) => {
-    const percent = (confidence || 0) * 100;
+    const percent = (confidence || 0);
     
     if (percent >= 80) {
       return {

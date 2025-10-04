@@ -74,6 +74,7 @@ class Producto(Base):
     __tablename__ = "productos"
 
     id = Column(Integer, primary_key=True, index=True)
+    codigo = Column(String(20), unique=True, nullable=True, index=True)  # Ej: PAP-001, AGE-012
     nombre = Column(String(255), nullable=False)
     categoria_id = Column(Integer, ForeignKey("categorias.id"), nullable=True, index=True)
     descripcion = Column(Text, nullable=True)

@@ -129,6 +129,7 @@ class CategoriaOut(CategoriaBase):
 
 # ==================== PRODUCTOS ====================
 class ProductoBase(BaseModel):
+    codigo: Optional[str] = None
     nombre: str
     categoria_id: Optional[int] = None
     descripcion: Optional[str] = None
@@ -169,6 +170,7 @@ from pydantic import Field
 
 class ProductoUpsert(BaseModel):
     id: Optional[int] = None
+    codigo: Optional[str] = None  # Generado automáticamente si no viene
     nombre: str
     categoria_id: Optional[int] = None
     categoria_nombre: Optional[str] = None
