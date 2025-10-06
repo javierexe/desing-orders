@@ -535,16 +535,23 @@ export default function NewOrderModal({
         });
         
         if (!res.ok) {
-          throw new Error(`Upload failed: ${res.status}`);
+          const txt = await res.text();
+          let errorDetail = "Error al subir imagen a Supabase Storage";
+          try {
+            const errorJson = JSON.parse(txt);
+            errorDetail = errorJson.detail || errorDetail;
+          } catch {
+            errorDetail = txt || errorDetail;
+          }
+          throw new Error(errorDetail);
         }
         
         const uploadResult = await res.json();
         console.log('📡 Upload response:', uploadResult);
         
-        // Procesar resultado
-        const url = uploadResult.storage_provider === "supabase" ? uploadResult.url : normalizeServerUrl(uploadResult.url);
+        // El backend siempre devuelve Supabase ahora (no hay fallback local)
         const imageData = { 
-          url, 
+          url: uploadResult.url, 
           storage_key: uploadResult.storage_key, 
           filename: getFileNameFromUrl(uploadResult.url) 
         };
@@ -559,7 +566,8 @@ export default function NewOrderModal({
         console.log('✅ Comprobante subido y agregado al estado correctamente');
       } catch (error) {
         console.error('❌ Error subiendo comprobante después del OCR:', error);
-        showToast('❌ Error al guardar el comprobante', 'error');
+        const errorMsg = error.message || 'Error al guardar el comprobante en Supabase Storage';
+        showToast(`❌ ${errorMsg}`, 'error');
       }
     }
     
@@ -651,14 +659,24 @@ export default function NewOrderModal({
         });
         if (!res.ok) {
           const txt = await res.text();
-          throw new Error(txt || "Error al subir imagen");
+          let errorDetail = "Error al subir imagen a Supabase Storage";
+          try {
+            const errorJson = JSON.parse(txt);
+            errorDetail = errorJson.detail || errorDetail;
+          } catch {
+            errorDetail = txt || errorDetail;
+          }
+          throw new Error(errorDetail);
         }
         const data = await res.json();
         console.log('📡 Upload response:', data);
-        // El backend ahora devuelve { url, storage_key, storage_provider }
-        // Para Supabase, usar la URL directamente. Para local, normalizarla.
-        const url = data.storage_provider === "supabase" ? data.url : normalizeServerUrl(data.url);
-        const result = { url, storage_key: data.storage_key, filename: getFileNameFromUrl(data.url) };
+        
+        // El backend siempre devuelve Supabase ahora (no hay fallback local)
+        const result = { 
+          url: data.url, 
+          storage_key: data.storage_key, 
+          filename: getFileNameFromUrl(data.url) 
+        };
         console.log('🏗️ Processed result:', result);
         return result;
       });
@@ -674,11 +692,12 @@ export default function NewOrderModal({
         return { ...f, abono_images: newImages };
       });
       
-      showToast(`✅ ${results.length} archivo(s) subido(s) correctamente`, 'success');
+      showToast(`✅ ${results.length} archivo(s) subido(s) a Supabase`, 'success');
     } catch (err) {
-      console.error(err);
-      showToast('❌ Error al subir archivos', 'error');
-      onNotify && onNotify("Error subiendo imagen(es)", "error");
+      console.error('❌ Upload error:', err);
+      const errorMsg = err.message || 'Error al subir archivos a Supabase Storage';
+      showToast(`❌ ${errorMsg}`, 'error');
+      onNotify && onNotify(errorMsg, "error");
     } finally {
       setUploading(false);
     }
@@ -1053,11 +1072,11 @@ export default function NewOrderModal({
                       </p>
                       <div className="flex items-center space-x-4 mt-1">
                         <p className="text-xs text-gray-500">
-                          {u.uploaded_at ? `Subido el ${new Date(u.uploaded_at).toLocaleDateString()}` : 'Archivo local'}
+                          {u.uploaded_at ? `Subido el ${new Date(u.uploaded_at).toLocaleDateString()}` : 'Pendiente'}
                         </p>
                         <div className="flex items-center text-xs text-green-600">
                           <CloudUpload className="w-3 h-3 mr-1" />
-                          <span>{u.storage_key ? 'Supabase Storage' : 'Local Storage'}</span>
+                          <span>Supabase Storage</span>
                         </div>
                       </div>
                     </div>
