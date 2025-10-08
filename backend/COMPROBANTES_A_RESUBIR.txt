@@ -1,0 +1,146 @@
+================================================================================
+                  COMPROBANTES DE PAGO A RE-SUBIR
+================================================================================
+
+FECHA: 8 de octubre de 2025
+
+Estimado cliente,
+
+Durante una actualización del sistema, detectamos que algunos comprobantes de 
+pago necesitan ser re-subidos. Los MONTOS ABONADOS están correctamente 
+registrados en el sistema, solo necesitamos las imágenes/PDFs de respaldo.
+
+Total de pedidos afectados: 12
+Total de comprobantes a re-subir: 15
+
+================================================================================
+
+DETALLE POR PEDIDO:
+
+--------------------------------------------------------------------------------
+PEDIDO: OT-028 - Hermy
+Estado: Listo para entrega
+Comprobantes a re-subir: 4 archivos (subidos el 2 de octubre)
+Total del pedido: $144,600 CLP
+Total abonado: $144,600 CLP ✅ (Pagado completo)
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+PEDIDO: OT-084 - Consuelo SanCar
+Estado: Entregado
+Comprobantes a re-subir: 1 archivo (subido el 2 de octubre)
+Total del pedido: $66,000 CLP
+Total abonado: $66,000 CLP ✅ (Pagado completo)
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+PEDIDO: OT-088 - El Sabroson
+Estado: En diseño
+Comprobantes a re-subir: 1 archivo (subido el 2 de octubre)
+Total del pedido: $25,900 CLP
+Total abonado: $13,000 CLP
+⚠️  Pendiente: $12,900 CLP
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+PEDIDO: OT-094 - Jacqueline
+Estado: Recibido
+Comprobantes a re-subir: 1 archivo (subido el 2 de octubre)
+Total del pedido: $8,900 CLP
+Total abonado: $8,900 CLP ✅ (Pagado completo)
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+PEDIDO: OT-095 - Pamela Tobar
+Estado: Listo para entrega
+Comprobantes a re-subir: 1 archivo (subido el 2 de octubre)
+Total del pedido: $135,000 CLP
+Total abonado: $60,000 CLP
+⚠️  Pendiente: $75,000 CLP
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+PEDIDO: OT-097 - Clauchard
+Estado: Entregado
+Comprobantes a re-subir: 1 archivo (subido el 2 de octubre)
+Total del pedido: $13,000 CLP
+Total abonado: $13,000 CLP ✅ (Pagado completo)
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+PEDIDO: OT-104 - Graciela Valdevenito
+Estado: En producción
+Comprobantes a re-subir: 1 archivo (subido el 3 de octubre)
+Total del pedido: $25,200 CLP
+Total abonado: $15,000 CLP
+⚠️  Pendiente: $10,200 CLP
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+PEDIDO: OT-105 - Yocelin
+Estado: Listo para entrega
+Comprobantes a re-subir: 1 archivo (subido el 3 de octubre)
+Total del pedido: $20,800 CLP
+Total abonado: $10,400 CLP
+⚠️  Pendiente: $10,400 CLP
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+PEDIDO: OT-107 - Lucas Hurtado
+Estado: Listo para entrega
+Comprobantes a re-subir: 1 archivo (subido el 3 de octubre)
+Total del pedido: $21,900 CLP
+Total abonado: $11,000 CLP
+⚠️  Pendiente: $10,900 CLP
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+PEDIDO: OT-115 - Barbara
+Estado: En producción
+Comprobantes a re-subir: 1 archivo (subido el 5 de octubre)
+Total del pedido: $25,200 CLP
+Total abonado: $12,600 CLP
+⚠️  Pendiente: $12,600 CLP
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+PEDIDO: OT-116 - Natalia
+Estado: Listo para entrega
+Comprobantes a re-subir: 1 archivo (subido el 5 de octubre)
+Total del pedido: $26,775 CLP
+Total abonado: $26,775 CLP ✅ (Pagado completo)
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+PEDIDO: OT-117 - Pablo
+Estado: Recibido
+Comprobantes a re-subir: 1 archivo (subido el 5 de octubre)
+Total del pedido: $45,000 CLP
+Total abonado: $45,000 CLP ✅ (Pagado completo)
+--------------------------------------------------------------------------------
+
+================================================================================
+
+INSTRUCCIONES PARA RE-SUBIR COMPROBANTES:
+
+1. Ingrese al sistema con su usuario
+2. Busque el pedido por su código (ej: OT-028)
+3. Click en "Editar pedido"
+4. En la sección de "Comprobantes", suba nuevamente las imágenes/PDFs
+5. Guarde los cambios
+
+IMPORTANTE:
+• Los montos abonados YA ESTÁN registrados correctamente
+• Solo necesitamos el respaldo visual del comprobante
+• Los archivos ahora se guardarán con nombres descriptivos que incluyen:
+  - Código del pedido
+  - Monto abonado
+  - Fecha y hora de subida
+
+================================================================================
+
+Si tiene alguna duda, contacte al administrador del sistema.
+
+Gracias por su colaboración.
+
+================================================================================
