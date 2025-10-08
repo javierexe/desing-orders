@@ -78,8 +78,15 @@ def list_orders(db: Session = Depends(get_db)):
     result = []
     for order in orders:
         totals = calculate_order_totals(order)
-        # Map receipts if exist
-        receipts = [schemas.OrderReceiptOut(id=r.id, url=r.url, filename=r.filename, storage_key=r.storage_key, uploaded_at=r.uploaded_at) for r in getattr(order, "receipts", [])]
+        # Map receipts if exist (convertir date a datetime)
+        from datetime import datetime
+        receipts = [schemas.OrderReceiptOut(
+            id=r.id, 
+            url=r.url, 
+            filename=r.filename, 
+            storage_key=r.storage_key, 
+            uploaded_at=datetime.combine(r.uploaded_at, datetime.min.time()) if r.uploaded_at else datetime.now()
+        ) for r in getattr(order, "receipts", [])]
         
         logger.info(f"🧾 Orden {order.code}: {len(receipts)} receipts, {len(order.items)} items")
         if receipts:
