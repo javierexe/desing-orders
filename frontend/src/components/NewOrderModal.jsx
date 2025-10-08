@@ -525,9 +525,16 @@ export default function NewOrderModal({
     if (currentFileForDetection) {
       console.log('📤 Subiendo comprobante después de aplicar abono:', currentFileForDetection.name);
       try {
-        // Subir archivo a Supabase Storage (mismo código que handleFileUpload)
+        // Subir archivo a Supabase Storage con metadata del pedido
         const formData = new FormData();
         formData.append("file", currentFileForDetection);
+        // Agregar metadata si está disponible
+        if (order?.code) {
+          formData.append("order_code", order.code);
+        }
+        if (appliedAmount) {
+          formData.append("amount", appliedAmount.toString());
+        }
         
         const res = await fetch("/api/upload-abono-image", {
           method: "POST",
@@ -652,6 +659,20 @@ export default function NewOrderModal({
         // Manejar tanto File como Blob (para paste)
         const fileName = file.name || `pasted_image_${Date.now()}.png`;
         formData.append("file", file, fileName);
+        
+        // Agregar metadata del pedido si está disponible
+        if (order?.code) {
+          formData.append("order_code", order.code);
+          console.log(`📦 [processFiles] Order code: ${order.code}`);
+        }
+        // Calcular monto total abonado si hay items
+        if (items && items.length > 0) {
+          const totalPaid = items.reduce((sum, item) => sum + (parseInt(item.paid_amount) || 0), 0);
+          if (totalPaid > 0) {
+            formData.append("amount", totalPaid.toString());
+            console.log(`💰 [processFiles] Total paid: $${totalPaid.toLocaleString('es-CL')}`);
+          }
+        }
         
         console.log(`📤 [processFiles] Subiendo archivo: ${fileName}, tamaño: ${file.size} bytes`);
         

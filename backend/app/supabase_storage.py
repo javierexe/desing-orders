@@ -21,15 +21,38 @@ class SupabaseStorage:
         self.client: Client = create_client(self.url, self.key)
         self.bucket_name = os.getenv("SUPABASE_BUCKET", "order-receipts")  # Bucket en Supabase (ver Copilot instructions)
 
-    def upload_file(self, file_content: bytes, filename: str, content_type: str) -> tuple[str, str]:
+    def upload_file(self, file_content: bytes, filename: str, content_type: str, order_code: str = None, amount: int = None) -> tuple[str, str]:
         """
-        Sube un archivo a Supabase Storage
+        Sube un archivo a Supabase Storage con nombre descriptivo
         Returns: (public_url, storage_key)
+        
+        Args:
+            file_content: Contenido del archivo
+            filename: Nombre original del archivo
+            content_type: Tipo MIME
+            order_code: Código de la orden (ej: OT-123) - opcional
+            amount: Monto del abono en pesos - opcional
         """
         try:
-            # Generar un nombre único para evitar colisiones
+            # Generar nombre descriptivo
             file_extension = filename.split('.')[-1] if '.' in filename else 'jpg'
-            unique_filename = f"{uuid.uuid4()}.{file_extension}"
+            
+            # Construir nombre: {orden}_{monto}_{timestamp}_{uuid}.ext
+            # Ejemplo: OT-123_50000_20231008_abc123.jpg
+            from datetime import datetime
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            short_uuid = str(uuid.uuid4())[:8]  # Solo los primeros 8 caracteres del UUID
+            
+            if order_code and amount is not None:
+                # Formato: OT-123_50000CLP_20231008_143022_abc123.jpg
+                unique_filename = f"{order_code}_{amount}CLP_{timestamp}_{short_uuid}.{file_extension}"
+            elif order_code:
+                # Formato: OT-123_20231008_143022_abc123.jpg
+                unique_filename = f"{order_code}_{timestamp}_{short_uuid}.{file_extension}"
+            else:
+                # Fallback: solo timestamp y uuid (para casos sin metadata)
+                unique_filename = f"comprobante_{timestamp}_{short_uuid}.{file_extension}"
+            
             storage_path = f"comprobantes/{unique_filename}"
             
             # Subir archivo

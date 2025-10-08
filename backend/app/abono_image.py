@@ -1,10 +1,15 @@
-from fastapi import APIRouter, UploadFile, File, HTTPException
+from fastapi import APIRouter, UploadFile, File, HTTPException, Form
+from typing import Optional
 from .supabase_storage import get_supabase_storage
 
 router = APIRouter()
 
 @router.post("/upload-abono-image")
-def upload_abono_image(file: UploadFile = File(...)):
+def upload_abono_image(
+    file: UploadFile = File(...),
+    order_code: Optional[str] = Form(None),
+    amount: Optional[int] = Form(None)
+):
     """
     Sube un comprobante de abono a Supabase Storage.
     
@@ -33,12 +38,18 @@ def upload_abono_image(file: UploadFile = File(...)):
         
         # Subir a Supabase (sin fallback)
         print("☁️ Uploading to Supabase Storage...")
+        if order_code:
+            print(f"   📦 Order: {order_code}")
+        if amount is not None:
+            print(f"   💰 Amount: ${amount:,} CLP")
         storage = get_supabase_storage()
         print(f"   🪣 Bucket name: {storage.bucket_name}")
         public_url, storage_key = storage.upload_file(
             file_content=contents,
             filename=file.filename or "receipt.jpg",
-            content_type=file.content_type
+            content_type=file.content_type,
+            order_code=order_code,
+            amount=amount
         )
         
         print(f"✅ Supabase upload successful!")
