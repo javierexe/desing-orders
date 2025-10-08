@@ -11,7 +11,9 @@ def upload_abono_image(file: UploadFile = File(...)):
     Si Supabase no está disponible o falla, el endpoint retorna error 500.
     NO hay fallback a almacenamiento local para mantener consistencia en producción.
     """
+    print(f"\n{'='*80}")
     print(f"🔄 UPLOAD REQUEST: {file.filename}, {file.content_type}")
+    print(f"{'='*80}\n")
     
     try:
         # Validar tipo de archivo
@@ -32,13 +34,18 @@ def upload_abono_image(file: UploadFile = File(...)):
         # Subir a Supabase (sin fallback)
         print("☁️ Uploading to Supabase Storage...")
         storage = get_supabase_storage()
+        print(f"   🪣 Bucket name: {storage.bucket_name}")
         public_url, storage_key = storage.upload_file(
             file_content=contents,
             filename=file.filename or "receipt.jpg",
             content_type=file.content_type
         )
         
-        print(f"✅ Supabase upload successful: {public_url}")
+        print(f"✅ Supabase upload successful!")
+        print(f"   📍 URL: {public_url}")
+        print(f"   🔑 Storage key: {storage_key}")
+        print(f"\n{'='*80}\n")
+        
         return {
             "url": public_url,
             "storage_key": storage_key,

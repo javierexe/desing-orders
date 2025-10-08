@@ -31,9 +31,19 @@ def list_receipts(code: str, db: Session = Depends(get_db)):
 
 @router.post("/orders/{code}/receipts", response_model=schemas.OrderReceiptOut, status_code=201)
 def create_receipt(code: str, payload: schemas.OrderReceiptCreate = Body(...), db: Session = Depends(get_db)):
+    print(f"\n{'='*80}")
+    print(f"💾 CREATE RECEIPT REQUEST for order: {code}")
+    print(f"   URL: {payload.url}")
+    print(f"   Filename: {payload.filename}")
+    print(f"   Storage key: {payload.storage_key}")
+    print(f"{'='*80}\n")
+    
     order = db.query(models.Order).filter(models.Order.code == code).first()
     if not order:
+        print(f"❌ Order not found: {code}")
         raise HTTPException(status_code=404, detail="Pedido no encontrado")
+    
+    print(f"✅ Order found: {order.code} (ID: {order.id})")
     
     # Crear receipt
     r = models.OrderReceipt(
@@ -46,6 +56,12 @@ def create_receipt(code: str, payload: schemas.OrderReceiptCreate = Body(...), d
     db.add(r)
     db.commit()
     db.refresh(r)
+    
+    print(f"✅ Receipt created successfully!")
+    print(f"   ID: {r.id}")
+    print(f"   Order ID: {r.order_id}")
+    print(f"   URL: {r.url}")
+    print(f"\n{'='*80}\n")
     
     return schemas.OrderReceiptOut(
         id=r.id, 

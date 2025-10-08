@@ -653,12 +653,18 @@ export default function NewOrderModal({
         const fileName = file.name || `pasted_image_${Date.now()}.png`;
         formData.append("file", file, fileName);
         
+        console.log(`📤 [processFiles] Subiendo archivo: ${fileName}, tamaño: ${file.size} bytes`);
+        
         const res = await fetch("/api/upload-abono-image", {
           method: "POST",
           body: formData,
         });
+        
+        console.log(`📡 [processFiles] Response status: ${res.status} ${res.statusText}`);
+        
         if (!res.ok) {
           const txt = await res.text();
+          console.error(`❌ [processFiles] Upload failed:`, txt);
           let errorDetail = "Error al subir imagen a Supabase Storage";
           try {
             const errorJson = JSON.parse(txt);
@@ -669,7 +675,7 @@ export default function NewOrderModal({
           throw new Error(errorDetail);
         }
         const data = await res.json();
-        console.log('📡 Upload response:', data);
+        console.log('✅ [processFiles] Upload response:', data);
         
         // El backend siempre devuelve Supabase ahora (no hay fallback local)
         const result = { 
@@ -677,7 +683,7 @@ export default function NewOrderModal({
           storage_key: data.storage_key, 
           filename: getFileNameFromUrl(data.url) 
         };
-        console.log('🏗️ Processed result:', result);
+        console.log('🏗️ [processFiles] Processed result:', result);
         return result;
       });
 
@@ -807,12 +813,22 @@ export default function NewOrderModal({
         // Si hay comprobantes locales (sin id), persistirlos para asociarlos a la nueva orden
         if (form.abono_images && form.abono_images.length) {
           const toPersist = form.abono_images.filter(a => !a.id);
-          console.log(`💾 Persistiendo ${toPersist.length} comprobantes para orden ${saved.code}:`, toPersist);
+          console.log(`\n${'='.repeat(80)}`);
+          console.log(`💾 [handleSubmit] PERSISTIENDO COMPROBANTES`);
+          console.log(`   Orden: ${saved.code}`);
+          console.log(`   Total comprobantes: ${form.abono_images.length}`);
+          console.log(`   Comprobantes a persistir (sin id): ${toPersist.length}`);
+          console.log(`   Comprobantes:`, toPersist);
+          console.log(`${'='.repeat(80)}\n`);
           
           const persisted = [];
           for (const item of toPersist) {
             try {
-              console.log(`📤 Guardando comprobante: ${item.filename} -> ${item.url}`);
+              console.log(`📤 [handleSubmit] Guardando comprobante en BD:`);
+              console.log(`   Filename: ${item.filename}`);
+              console.log(`   URL: ${item.url}`);
+              console.log(`   Storage key: ${item.storage_key}`);
+              
               const res = await fetch(`/api/orders/${saved.code}/receipts`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -822,21 +838,30 @@ export default function NewOrderModal({
                   storage_key: item.storage_key 
                 })
               });
+              
+              console.log(`📡 [handleSubmit] Response status: ${res.status} ${res.statusText}`);
+              
               if (res.ok) {
                 const data = await res.json();
-                console.log('✅ Comprobante guardado en BD:', data);
+                console.log('✅ [handleSubmit] Comprobante guardado en BD:', data);
                 persisted.push({ id: data.id, url: data.url, filename: data.filename, uploaded_at: data.uploaded_at });
               } else {
-                console.error('❌ Error guardando comprobante en BD:', await res.text());
+                const errorText = await res.text();
+                console.error('❌ [handleSubmit] Error guardando comprobante en BD:', errorText);
                 persisted.push(item);
               }
             } catch (err) {
-              console.error('Persisting receipt after create failed', err);
+              console.error('❌ [handleSubmit] Excepción persistiendo comprobante:', err);
               persisted.push(item);
             }
           }
           // Merge persisted receipts into the saved response so caller sees them
           saved.receipts = persisted;
+          
+          console.log(`\n${'='.repeat(80)}`);
+          console.log(`✅ [handleSubmit] PERSISTENCIA COMPLETADA`);
+          console.log(`   Comprobantes guardados: ${persisted.filter(p => p.id).length}/${toPersist.length}`);
+          console.log(`${'='.repeat(80)}\n`);
         }
         onNotify?.(`Pedido creado: ${saved.code}`, "success");
         onCreated?.(saved);
