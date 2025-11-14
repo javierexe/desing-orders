@@ -1,9 +1,9 @@
 
 import React from "react";
-import { Trash } from "lucide-react";
+import { Trash, Copy } from "lucide-react";
 import ProductAutocomplete from "./ProductAutocomplete";
 
-function OrderItemsEditor({ items, manualEntryItemId, onManualEntryCleared, handleAdd, handleDelete, handleChange }) {
+function OrderItemsEditor({ items, manualEntryItemId, onManualEntryCleared, handleAdd, handleDelete, handleChange, handleClone }) {
 
   function handleProductSelect(idx, producto) {
     if (!producto) {
@@ -55,12 +55,13 @@ function OrderItemsEditor({ items, manualEntryItemId, onManualEntryCleared, hand
       {items.length > 0 && (
         <>
           {/* Header only on md+ to save space on mobile */}
-          <div className="grid grid-cols-[2fr_0.7fr_1fr_1fr_1.2fr_0.5fr] gap-2 items-center text-sm font-semibold text-slate-600 mb-2 px-3">
+          <div className="grid grid-cols-[2fr_0.7fr_1fr_1fr_1.2fr_1fr] gap-2 items-center text-sm font-semibold text-slate-600 mb-2 px-3">
             <div>Producto</div>
             <div className="text-center">Cant.</div>
             <div className="text-center">Precio Total</div>
             <div className="text-center">Abono</div>
             <div>Fecha Entrega</div>
+            <div className="text-center">Acciones</div>
           </div>
         </>
       )}
@@ -71,7 +72,7 @@ function OrderItemsEditor({ items, manualEntryItemId, onManualEntryCleared, hand
         } shadow-sm`}>
           
           {/* Grid de campos del item */}
-          <div className="grid grid-cols-1 md:grid-cols-[2fr_0.7fr_1fr_1fr_1.2fr_0.5fr] gap-1 items-center ">
+          <div className="grid grid-cols-1 md:grid-cols-[2fr_0.7fr_1fr_1fr_1.2fr_1fr] gap-1 items-center ">
             
             {/* Columna 1: Autocompletado de producto */}
             <label className="text-sm flex flex-col md:flex-row md:items-center">
@@ -154,8 +155,16 @@ function OrderItemsEditor({ items, manualEntryItemId, onManualEntryCleared, hand
               />
             </label>
 
-            {/* Columna 6: Eliminar */}
-            <div className="flex items-center justify-center">
+            {/* Columna 6: Acciones (Clonar y Eliminar) */}
+            <div className="flex items-center justify-center gap-1">
+              <button 
+                type="button" 
+                onClick={() => handleClone?.(idx)} 
+                className="rounded-xl border border-sky-300 p-2 text-sky-700 hover:bg-sky-50 flex items-center justify-center transition-colors" 
+                title="Clonar ítem"
+              >
+                <Copy className="w-4 h-4" />
+              </button>
               <button 
                 type="button" 
                 onClick={() => handleDelete(idx)} 

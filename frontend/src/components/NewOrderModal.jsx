@@ -1026,6 +1026,25 @@ export default function NewOrderModal({
                 setItems([...items, newItem]);
               }}
               handleDelete={idx => setItems(items.filter((_, i) => i !== idx))}
+              handleClone={(idx) => {
+                const itemToClone = items[idx];
+                if (!itemToClone) return;
+                
+                // Crear una copia del item con un nuevo ID
+                const clonedItem = {
+                  ...itemToClone,
+                  id: Date.now() + Math.random(), // Nuevo ID único temporal
+                  paid_amount: 0, // Resetear abono a 0 en la copia
+                };
+                
+                // Insertar el item clonado justo después del original
+                const newItems = [...items];
+                newItems.splice(idx + 1, 0, clonedItem);
+                setItems(newItems);
+                
+                // Mostrar toast de confirmación
+                showToast('✅ Ítem clonado exitosamente', 'success');
+              }}
               handleChange={(idx, field, value) => {
                 // Si el usuario edita el campo abono, limpiar el estado de entrada manual
                 if (field === 'paid_amount' && manualEntryItemId) {
