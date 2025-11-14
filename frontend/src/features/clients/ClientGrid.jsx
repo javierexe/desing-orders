@@ -19,6 +19,7 @@ export default function ClientGrid() {
   
   const dirtyRows = useRef(new Map());
   const saveTimer = useRef(null);
+  const activeElementRef = useRef(null); // Para preservar foco durante guardado
 
   // Fetch inicial
   useEffect(() => {
@@ -72,8 +73,11 @@ export default function ClientGrid() {
     dirtyRows.current.set(rowId, { ...current, [columnId]: value });
   }
 
-  // Manejar blur
-  function handleCellBlur(rowId, columnId, value) {
+  // Manejar blur - guardado INMEDIATO sin debounce
+  async function handleCellBlur(rowId, columnId, value) {
+    // Guardar referencia al elemento activo ANTES de cualquier operación
+    activeElementRef.current = document.activeElement;
+    
     // Actualizar data local
     setData(prev => prev.map(row => {
       if (row.id === rowId) {
@@ -82,11 +86,52 @@ export default function ClientGrid() {
       return row;
     }));
 
-    // Debounce autosave
-    if (saveTimer.current) clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => {
-      saveDirtyRows();
-    }, 1000);
+    // Marcar como dirty
+    const current = dirtyRows.current.get(rowId) || { id: rowId };
+    dirtyRows.current.set(rowId, { ...current, [columnId]: value });
+
+    // Guardado inmediato (sin debounce)
+    await saveSingleRow(rowId);
+  }
+
+  // Guardar una sola fila inmediatamente
+  async function saveSingleRow(rowId) {
+    const rowData = dirtyRows.current.get(rowId);
+    if (!rowData) return;
+
+    // Guardar el elemento con foco ANTES de comenzar el guardado
+    const elementToRefocus = activeElementRef.current;
+    
+    setSaving(true);
+    
+    try {
+      const { id, ...fields } = rowData;
+      const res = await fetch(`/api/clientes/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(fields)
+      });
+      
+      if (!res.ok) throw new Error('Error actualizando cliente');
+      
+      // Eliminar de dirty solo esta fila
+      dirtyRows.current.delete(rowId);
+      
+      // NO mostrar toast para no interrumpir el flujo
+      // toast.success('Cliente actualizado');
+    } catch (err) {
+      toast.error('Error guardando cambios');
+    } finally {
+      setSaving(false);
+      
+      // Restaurar foco al elemento que estaba activo
+      // Usar requestAnimationFrame para asegurar que el DOM se ha actualizado
+      requestAnimationFrame(() => {
+        if (elementToRefocus && document.body.contains(elementToRefocus)) {
+          elementToRefocus.focus();
+        }
+      });
+    }
   }
 
   async function saveDirtyRows() {

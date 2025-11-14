@@ -23,6 +23,7 @@ export default function ProductGrid() {
   const dirtyRows = useRef(new Map());
   const saveTimer = useRef(null);
   const fileInputRef = useRef(null);
+  const activeElementRef = useRef(null); // Para preservar foco durante guardado
 
   // Helper para obtener icono de categoría
   const getCategoryIcon = (categoryName) => {
@@ -117,8 +118,11 @@ export default function ProductGrid() {
     dirtyRows.current.set(rowId, updated);
   }
 
-  // Manejar blur (cuando el usuario sale del campo)
-  function handleCellBlur(rowId, columnId, value) {
+  // Manejar blur (cuando el usuario sale del campo) - guardado INMEDIATO
+  async function handleCellBlur(rowId, columnId, value) {
+    // Guardar referencia al elemento activo ANTES de cualquier operación
+    activeElementRef.current = document.activeElement;
+    
     // Actualizar data local
     setData(prev => prev.map(row => {
       if (row.id === rowId) {
@@ -139,11 +143,86 @@ export default function ProductGrid() {
       return row;
     }));
 
-    // Debounce autosave - aumentado a 1 segundo
-    if (saveTimer.current) clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => {
-      saveDirtyRows();
-    }, 1000);
+    // Marcar como dirty
+    const current = dirtyRows.current.get(rowId) || { id: rowId };
+    const updated = { ...current, [columnId]: value };
+    
+    // Si es cambio de categoría, agregar categoria_nombre
+    if (columnId === 'categoria_id' && value) {
+      const cat = categories.find(c => c.id === parseInt(value));
+      if (cat) {
+        updated.categoria_nombre = cat.nombre;
+      }
+    } else if (columnId === 'categoria_id' && !value) {
+      updated.categoria_nombre = null;
+    }
+    
+    dirtyRows.current.set(rowId, updated);
+
+    // Guardado inmediato (sin debounce)
+    await saveSingleRow(rowId);
+  }
+
+  // Guardar una sola fila inmediatamente
+  async function saveSingleRow(rowId) {
+    const row = dirtyRows.current.get(rowId);
+    if (!row) return;
+
+    // Guardar el elemento con foco ANTES de comenzar el guardado
+    const elementToRefocus = activeElementRef.current;
+    
+    setSaving(true);
+    
+    try {
+      const producto = data.find(p => p.id === row.id);
+      
+      const payload = {
+        id: row.id,
+        nombre: row.nombre || producto?.nombre || 'Sin nombre',
+        categoria_id: row.categoria_id !== undefined ? row.categoria_id : producto?.categoria_id,
+        presentacion: row.presentacion !== undefined ? row.presentacion : producto?.presentacion,
+        precio_base: row.precio_base !== undefined ? parseInt(row.precio_base) || null : producto?.precio_base,
+        requiere_cotizacion: row.requiere_cotizacion !== undefined ? Boolean(row.requiere_cotizacion) : Boolean(producto?.requiere_cotizacion),
+        unidad_medida: row.unidad_medida !== undefined ? row.unidad_medida : producto?.unidad_medida,
+        descripcion: row.descripcion !== undefined ? row.descripcion : producto?.descripcion,
+        activo: row.activo !== undefined ? Boolean(row.activo) : Boolean(producto?.activo)
+      };
+      
+      // Solo agregar categoria_nombre si existe
+      if (row.categoria_nombre || producto?.categoria?.nombre) {
+        payload.categoria_nombre = row.categoria_nombre || producto?.categoria?.nombre;
+      }
+      
+      // Solo agregar codigo si existe
+      if (row.codigo || producto?.codigo) {
+        payload.codigo = row.codigo || producto?.codigo;
+      }
+
+      const res = await fetch('/api/productos/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ updates: [payload], deletes: [], new_categories: [] })
+      });
+
+      if (!res.ok) throw new Error('Error guardando');
+      
+      // Eliminar de dirty solo esta fila
+      dirtyRows.current.delete(rowId);
+      
+      // NO mostrar toast para no interrumpir el flujo
+      // toast.success('Producto actualizado');
+    } catch (err) {
+      toast.error('Error guardando cambios');
+    } finally {
+      setSaving(false);
+      
+      // Restaurar foco al elemento que estaba activo
+      requestAnimationFrame(() => {
+        if (elementToRefocus && document.body.contains(elementToRefocus)) {
+          elementToRefocus.focus();
+        }
+      });
+    }
   }
 
   async function saveDirtyRows() {
