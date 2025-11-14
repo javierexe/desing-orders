@@ -222,8 +222,7 @@ export default function ProductAutocomplete({ onSelect, value, placeholder = "Bu
 
   async function handleSaveQuickProduct(formData) {
     try {
-      const response = await api.post("/productos", formData);
-      const nuevoProducto = response.data;
+      const nuevoProducto = await api.post("/productos", formData);
       
       // Agregar a la lista local y cache
       const nuevaLista = [...productos, nuevoProducto];
@@ -392,7 +391,10 @@ function QuickCreateProductModal({ initialName, onSave, onCancel }) {
   }
 
   function handleSubmit(e) {
-    e.preventDefault();
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation(); // Prevenir que el evento se propague al modal padre
+    }
     
     // Validar que tenga nombre y categoría
     if (!formData.nombre.trim()) {
@@ -410,8 +412,17 @@ function QuickCreateProductModal({ initialName, onSave, onCancel }) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+    <div 
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-black bg-opacity-50 p-4"
+      onClick={(e) => {
+        e.stopPropagation();
+        onCancel();
+      }}
+    >
+      <div 
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="sticky top-0 bg-white border-b border-slate-200 px-6 py-4 rounded-t-2xl">
           <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
             <Package size={20} className="text-sky-600" />
@@ -422,7 +433,14 @@ function QuickCreateProductModal({ initialName, onSave, onCancel }) {
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <form 
+          onSubmit={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            // No hacer nada aquí, el submit se maneja desde el botón
+          }} 
+          className="p-6 space-y-4"
+        >
           {/* Nombre */}
           <div>
             <label className="block text-sm font-semibold text-slate-700 mb-1">
@@ -539,13 +557,21 @@ function QuickCreateProductModal({ initialName, onSave, onCancel }) {
           <div className="flex gap-3 pt-4">
             <button
               type="button"
-              onClick={onCancel}
+              onClick={(e) => {
+                e.stopPropagation();
+                onCancel();
+              }}
               className="flex-1 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors"
             >
               Cancelar
             </button>
             <button
-              type="submit"
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleSubmit();
+              }}
               className="flex-1 px-4 py-2 bg-sky-500 text-white rounded-lg hover:bg-sky-600 transition-colors font-semibold"
             >
               Crear producto

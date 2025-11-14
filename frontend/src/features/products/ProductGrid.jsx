@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { useReactTable, getCoreRowModel, getSortedRowModel, flexRender } from '@tanstack/react-table';
 import { toast, Toaster } from 'sonner';
 import { Trash2, Package, Tag, Palette, Shirt, Gift, BookOpen, Box, Sparkles, Heart, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
@@ -12,6 +12,11 @@ export default function ProductGrid() {
   const [saving, setSaving] = useState(false);
   const [importModal, setImportModal] = useState({ open: false, data: null, stats: null });
   const [sorting, setSorting] = useState([]);
+  const [highlightedProductId, setHighlightedProductId] = useState(null);
+  
+  // Nuevos filtros
+  const [filterStatus, setFilterStatus] = useState('all'); // 'all', 'active', 'inactive'
+  const [priceRange, setPriceRange] = useState({ min: '', max: '' });
   
   const dirtyRows = useRef(new Map());
   const saveTimer = useRef(null);
@@ -67,8 +72,51 @@ export default function ProductGrid() {
     }
   }
 
-  // Manejo de edición con autosave
+  // Aplicar filtros locales (estado, rango de precio, búsqueda)
+  const filteredData = useMemo(() => {
+    let filtered = [...data];
+    
+    // Filtro por estado
+    if (filterStatus === 'active') {
+      filtered = filtered.filter(p => p.activo === true);
+    } else if (filterStatus === 'inactive') {
+      filtered = filtered.filter(p => p.activo === false);
+    }
+    
+    // Filtro por rango de precio
+    if (priceRange.min !== '') {
+      const minPrice = parseInt(priceRange.min);
+      filtered = filtered.filter(p => (p.precio_base || 0) >= minPrice);
+    }
+    if (priceRange.max !== '') {
+      const maxPrice = parseInt(priceRange.max);
+      filtered = filtered.filter(p => (p.precio_base || 0) <= maxPrice);
+    }
+    
+    return filtered;
+  }, [data, filterStatus, priceRange]);
+
+  // Manejo de edición - SOLO marcar como dirty, NO actualizar data todavía
   function handleCellEdit(rowId, columnId, value) {
+    // Marcar como dirty
+    const current = dirtyRows.current.get(rowId) || { id: rowId };
+    const updated = { ...current, [columnId]: value };
+    
+    // Si es cambio de categoría, agregar categoria_nombre
+    if (columnId === 'categoria_id' && value) {
+      const cat = categories.find(c => c.id === parseInt(value));
+      if (cat) {
+        updated.categoria_nombre = cat.nombre;
+      }
+    } else if (columnId === 'categoria_id' && !value) {
+      updated.categoria_nombre = null;
+    }
+    
+    dirtyRows.current.set(rowId, updated);
+  }
+
+  // Manejar blur (cuando el usuario sale del campo)
+  function handleCellBlur(rowId, columnId, value) {
     // Actualizar data local
     setData(prev => prev.map(row => {
       if (row.id === rowId) {
@@ -89,27 +137,11 @@ export default function ProductGrid() {
       return row;
     }));
 
-    // Marcar como dirty con categoria_nombre incluido
-    const current = dirtyRows.current.get(rowId) || { id: rowId };
-    const updated = { ...current, [columnId]: value };
-    
-    // Si es cambio de categoría, agregar categoria_nombre
-    if (columnId === 'categoria_id' && value) {
-      const cat = categories.find(c => c.id === parseInt(value));
-      if (cat) {
-        updated.categoria_nombre = cat.nombre;
-      }
-    } else if (columnId === 'categoria_id' && !value) {
-      updated.categoria_nombre = null;
-    }
-    
-    dirtyRows.current.set(rowId, updated);
-
-    // Debounce autosave
+    // Debounce autosave - aumentado a 1 segundo
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
       saveDirtyRows();
-    }, 700);
+    }, 1000);
   }
 
   async function saveDirtyRows() {
@@ -158,12 +190,9 @@ export default function ProductGrid() {
       
       const result = await res.json();
       
-      // Actualizar con datos del servidor
-      setData(prev => prev.map(row => {
-        const updated = result.rows.find(r => r.id === row.id);
-        return updated || row;
-      }));
-
+      // NO actualizar setData aquí para evitar perder el foco
+      // Los datos ya están actualizados localmente en handleCellEdit
+      
       dirtyRows.current.clear();
       toast.success('✅ Cambios guardados');
     } catch (err) {
@@ -235,6 +264,15 @@ export default function ProductGrid() {
       
       const created = await res.json();
       setData(prev => [created, ...prev]);
+      
+      // Resaltar el producto nuevo
+      setHighlightedProductId(created.id);
+      
+      // Quitar el resaltado después de 3 segundos
+      setTimeout(() => {
+        setHighlightedProductId(null);
+      }, 3000);
+      
       toast.success('Producto creado');
     } catch (err) {
       toast.error('Error al crear producto');
@@ -410,14 +448,29 @@ export default function ProductGrid() {
   const columns = [
     {
       id: 'select',
-      header: ({ table }) => (
-        <input
-          type="checkbox"
-          checked={table.getIsAllRowsSelected()}
-          onChange={table.getToggleAllRowsSelectedHandler()}
-          className="w-4 h-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
-        />
-      ),
+      header: ({ table }) => {
+        const allFilteredIds = filteredData.map(p => p.id);
+        const allSelected = allFilteredIds.length > 0 && allFilteredIds.every(id => selectedRows.has(id));
+        
+        return (
+          <input
+            type="checkbox"
+            checked={allSelected}
+            onChange={(e) => {
+              const newSelected = new Set(selectedRows);
+              if (e.target.checked) {
+                // Seleccionar todos los filtrados
+                allFilteredIds.forEach(id => newSelected.add(id));
+              } else {
+                // Deseleccionar todos los filtrados
+                allFilteredIds.forEach(id => newSelected.delete(id));
+              }
+              setSelectedRows(newSelected);
+            }}
+            className="w-4 h-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+          />
+        );
+      },
       cell: ({ row }) => (
         <input
           type="checkbox"
@@ -453,8 +506,9 @@ export default function ProductGrid() {
       cell: ({ row, getValue }) => (
         <input
           type="text"
-          value={getValue()}
+          defaultValue={getValue()}
           onChange={(e) => handleCellEdit(row.original.id, 'nombre', e.target.value)}
+          onBlur={(e) => handleCellBlur(row.original.id, 'nombre', e.target.value)}
           className="w-full px-2 py-1 text-sm border border-transparent hover:border-slate-300 focus:border-sky-400 focus:ring-1 focus:ring-sky-400 rounded outline-none"
           placeholder="Nombre del producto"
         />
@@ -472,7 +526,11 @@ export default function ProductGrid() {
         return (
           <select
             value={row.original.categoria_id || ''}
-            onChange={(e) => handleCellEdit(row.original.id, 'categoria_id', e.target.value ? parseInt(e.target.value) : null)}
+            onChange={(e) => {
+              const newValue = e.target.value ? parseInt(e.target.value) : null;
+              handleCellEdit(row.original.id, 'categoria_id', newValue);
+              handleCellBlur(row.original.id, 'categoria_id', newValue);
+            }}
             className="w-full px-2 py-1 text-sm border border-transparent hover:border-slate-300 focus:border-sky-400 focus:ring-1 focus:ring-sky-400 rounded outline-none bg-white"
           >
             <option value="">Sin categoría</option>
@@ -490,8 +548,9 @@ export default function ProductGrid() {
       cell: ({ row, getValue }) => (
         <input
           type="text"
-          value={getValue() || ''}
+          defaultValue={getValue() || ''}
           onChange={(e) => handleCellEdit(row.original.id, 'presentacion', e.target.value)}
+          onBlur={(e) => handleCellBlur(row.original.id, 'presentacion', e.target.value)}
           className="w-full px-2 py-1 text-sm border border-transparent hover:border-slate-300 focus:border-sky-400 focus:ring-1 focus:ring-sky-400 rounded outline-none"
         />
       ),
@@ -500,18 +559,27 @@ export default function ProductGrid() {
     {
       accessorKey: 'precio_base',
       header: 'Precio',
-      cell: ({ row, getValue }) => (
-        <input
-          type="text"
-          value={getValue() ? formatPrice(getValue()) : ''}
-          onChange={(e) => {
-            const numValue = e.target.value.replace(/[^0-9]/g, '');
-            handleCellEdit(row.original.id, 'precio_base', numValue ? parseInt(numValue) : null);
-          }}
-          className="w-full px-2 py-1 text-sm border border-transparent hover:border-slate-300 focus:border-sky-400 focus:ring-1 focus:ring-sky-400 rounded outline-none text-right "
-          placeholder="$ 0"
-        />
-      ),
+      cell: ({ row, getValue }) => {
+        const [localValue, setLocalValue] = React.useState(getValue() ? formatPrice(getValue()) : '');
+        
+        return (
+          <input
+            type="text"
+            value={localValue}
+            onChange={(e) => {
+              const numValue = e.target.value.replace(/[^0-9]/g, '');
+              setLocalValue(numValue ? formatPrice(parseInt(numValue)) : '');
+              handleCellEdit(row.original.id, 'precio_base', numValue ? parseInt(numValue) : null);
+            }}
+            onBlur={(e) => {
+              const numValue = e.target.value.replace(/[^0-9]/g, '');
+              handleCellBlur(row.original.id, 'precio_base', numValue ? parseInt(numValue) : null);
+            }}
+            className="w-full px-2 py-1 text-sm border border-transparent hover:border-slate-300 focus:border-sky-400 focus:ring-1 focus:ring-sky-400 rounded outline-none text-right "
+            placeholder="$ 0"
+          />
+        );
+      },
       enableSorting: true,
       size: 120,
     },
@@ -522,7 +590,10 @@ export default function ProductGrid() {
         <input
           type="checkbox"
           checked={getValue()}
-          onChange={(e) => handleCellEdit(row.original.id, 'requiere_cotizacion', e.target.checked)}
+          onChange={(e) => {
+            handleCellEdit(row.original.id, 'requiere_cotizacion', e.target.checked);
+            handleCellBlur(row.original.id, 'requiere_cotizacion', e.target.checked);
+          }}
           className="w-4 h-4 rounded border-slate-300 text-orange-600 focus:ring-orange-500"
         />
       ),
@@ -534,8 +605,9 @@ export default function ProductGrid() {
       cell: ({ row, getValue }) => (
         <input
           type="text"
-          value={getValue() || ''}
+          defaultValue={getValue() || ''}
           onChange={(e) => handleCellEdit(row.original.id, 'unidad_medida', e.target.value)}
+          onBlur={(e) => handleCellBlur(row.original.id, 'unidad_medida', e.target.value)}
           className="w-full px-2 py-1 text-sm border border-transparent hover:border-slate-300 focus:border-sky-400 focus:ring-1 focus:ring-sky-400 rounded outline-none"
         />
       ),
@@ -547,8 +619,9 @@ export default function ProductGrid() {
       cell: ({ row, getValue }) => (
         <input
           type="text"
-          value={getValue() || ''}
+          defaultValue={getValue() || ''}
           onChange={(e) => handleCellEdit(row.original.id, 'descripcion', e.target.value)}
+          onBlur={(e) => handleCellBlur(row.original.id, 'descripcion', e.target.value)}
           className="w-full px-2 py-1 text-sm border border-transparent hover:border-slate-300 focus:border-sky-400 focus:ring-1 focus:ring-sky-400 rounded outline-none"
         />
       ),
@@ -559,7 +632,11 @@ export default function ProductGrid() {
       header: 'Estado',
       cell: ({ row, getValue }) => (
         <button
-          onClick={() => handleCellEdit(row.original.id, 'activo', !getValue())}
+          onClick={() => {
+            const newValue = !getValue();
+            handleCellEdit(row.original.id, 'activo', newValue);
+            handleCellBlur(row.original.id, 'activo', newValue);
+          }}
           className={`px-2 py-1 rounded-full text-xs font-medium transition-colors ${
             getValue()
               ? 'bg-green-100 text-green-700 hover:bg-green-200'
@@ -589,7 +666,7 @@ export default function ProductGrid() {
   ];
 
   const table = useReactTable({
-    data,
+    data: filteredData,
     columns,
     state: {
       sorting,
@@ -609,7 +686,7 @@ export default function ProductGrid() {
         
 
         {/* Toolbar */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
           <input 
             type="text" 
             placeholder="Buscar productos..." 
@@ -618,8 +695,73 @@ export default function ProductGrid() {
               setSearchQuery(e.target.value);
               fetchProducts(selectedCategory, e.target.value);
             }}
-            className="flex-1 max-w-md rounded-xl border border-slate-300 px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-sky-400" 
+            className="flex-1 min-w-[200px] max-w-md rounded-xl border border-slate-300 px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-sky-400" 
           />
+          
+          {/* Filtro por estado - Botones visuales */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setFilterStatus('all')}
+              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                filterStatus === 'all'
+                  ? 'bg-slate-600 text-white'
+                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+              }`}
+            >
+              Todos
+            </button>
+            <button
+              onClick={() => setFilterStatus('active')}
+              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                filterStatus === 'active'
+                  ? 'bg-green-600 text-white'
+                  : 'bg-green-100 text-green-700 hover:bg-green-200'
+              }`}
+            >
+              ✓ Activos
+            </button>
+            <button
+              onClick={() => setFilterStatus('inactive')}
+              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                filterStatus === 'inactive'
+                  ? 'bg-slate-600 text-white'
+                  : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+              }`}
+            >
+              Inactivos
+            </button>
+          </div>
+          
+          {/* Filtro por rango de precio */}
+          <div className="flex items-center gap-2">
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-500 text-sm">$</span>
+              <input
+                type="text"
+                placeholder="precio mín"
+                value={priceRange.min ? parseInt(priceRange.min).toLocaleString('es-CL') : ''}
+                onChange={(e) => {
+                  const value = e.target.value.replace(/[^0-9]/g, '');
+                  setPriceRange(prev => ({ ...prev, min: value }));
+                }}
+                className="w-32 pl-6 pr-3 py-2 rounded-xl border border-slate-300 text-sm outline-none focus:ring-2 focus:ring-sky-400"
+              />
+            </div>
+            <span className="text-slate-400">-</span>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-500 text-sm">$</span>
+              <input
+                type="text"
+                placeholder="precio máx"
+                value={priceRange.max ? parseInt(priceRange.max).toLocaleString('es-CL') : ''}
+                onChange={(e) => {
+                  const value = e.target.value.replace(/[^0-9]/g, '');
+                  setPriceRange(prev => ({ ...prev, max: value }));
+                }}
+                className="w-32 pl-6 pr-3 py-2 rounded-xl border border-slate-300 text-sm outline-none focus:ring-2 focus:ring-sky-400"
+              />
+            </div>
+          </div>
           
           <div className="flex-1"></div>
           
@@ -685,7 +827,7 @@ export default function ProductGrid() {
             }`}
           >
             <Package size={14} />
-            Todos ({data.length})
+            Todos ({filteredData.length})
           </button>
           
           {categories.map(cat => {
@@ -749,7 +891,11 @@ export default function ProductGrid() {
             {table.getRowModel().rows.map(row => (
               <tr 
                 key={row.id}
-                className="hover:bg-sky-50 transition-colors"
+                className={`transition-all duration-500 ${
+                  highlightedProductId === row.original.id
+                    ? 'bg-orange-100 ring-2 ring-orange-400 ring-inset animate-pulse'
+                    : 'hover:bg-sky-50'
+                }`}
               >
                 {row.getVisibleCells().map(cell => (
                   <td 
@@ -765,10 +911,21 @@ export default function ProductGrid() {
           </tbody>
         </table>
         
-        {data.length === 0 && (
+        {filteredData.length === 0 && (
           <div className="text-center py-12 text-slate-500">
             <Package size={48} className="mx-auto mb-3 opacity-30" />
-            <p className="text-sm">No hay productos para mostrar</p>
+            <p className="text-sm">No hay productos que coincidan con los filtros</p>
+            {(filterStatus !== 'all' || priceRange.min !== '' || priceRange.max !== '') && (
+              <button
+                onClick={() => {
+                  setFilterStatus('all');
+                  setPriceRange({ min: '', max: '' });
+                }}
+                className="mt-3 text-xs text-sky-600 hover:text-sky-700 underline"
+              >
+                Limpiar filtros
+              </button>
+            )}
           </div>
         )}
       </div>
