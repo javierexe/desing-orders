@@ -13,8 +13,8 @@ export default function Layout({
   const [open, setOpen] = useState(false);
 
   const NAV = [
-    { label: "Pedidos",   key: "orders",    path: "/pedidos" },
     { label: "Dashboard", key: "dashboard", path: "/dashboard" },
+    { label: "Pedidos",   key: "orders",    path: "/pedidos" },
     { label: "Productos", key: "products", path: "/admin/products" },
     { label: "Clientes",  key: "clients",   path: "/admin/clients" },
     { label: "Reportes",  key: "reports",   path: "#", disabled: true },
