@@ -40,6 +40,10 @@ export default function Kanban({ orders = [], loading = false, onChangeStatus, o
   const [columns, setColumns] = useState(() =>
     Object.fromEntries(COLUMNS.map((c) => [c.key, []]))
   );
+  
+  // Estado para filtros de deuda por columna (key: columnKey, value: 'all' | 'debt')
+  const [debtFilters, setDebtFilters] = useState({});
+  
   useEffect(() => {
     setColumns(groupOrdersByStatus(orders, COLUMNS));
   }, [orders]);
@@ -56,6 +60,14 @@ export default function Kanban({ orders = [], loading = false, onChangeStatus, o
   } = useKanbanDnD(columns, setColumns, getOrderById, onChangeStatus, BACKEND_STATUS);
 
   const activeOrder = orders.find((o) => toId(o.code) === toId(activeId)) || null;
+
+  // Función para alternar filtro de deuda en una columna
+  const handleToggleDebtFilter = (columnKey, filterType) => {
+    setDebtFilters(prev => ({
+      ...prev,
+      [columnKey]: filterType
+    }));
+  };
 
   // Detectar columnas colapsadas
   // Detectar columna colapsada 'entregado' y columna 'cancelado'
@@ -87,6 +99,8 @@ export default function Kanban({ orders = [], loading = false, onChangeStatus, o
                 getOrderById={getOrderById}
                 onEdit={onEditOrder}
                 onDelete={onDelete}
+                debtFilter={debtFilters[col.key] || 'all'}
+                onToggleDebtFilter={handleToggleDebtFilter}
               />
             ))}
             {/* Render columna Cancelados + apilada Entregados debajo */}
@@ -98,6 +112,8 @@ export default function Kanban({ orders = [], loading = false, onChangeStatus, o
                 getOrderById={getOrderById}
                 onEdit={onEditOrder}
                 onDelete={onDelete}
+                debtFilter={debtFilters[canceladoCol.key] || 'all'}
+                onToggleDebtFilter={handleToggleDebtFilter}
               />
               <Column
                 key={entregadoCol.key}
@@ -106,6 +122,8 @@ export default function Kanban({ orders = [], loading = false, onChangeStatus, o
                 getOrderById={getOrderById}
                 onEdit={onEditOrder}
                 onDelete={onDelete}
+                debtFilter={debtFilters[entregadoCol.key] || 'all'}
+                onToggleDebtFilter={handleToggleDebtFilter}
               />
             </div>
           </>

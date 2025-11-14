@@ -6,7 +6,7 @@ import { ChevronDown, ChevronRight } from "lucide-react";
 import SortableCard from "./SortableCard";
 import KanbanCard from "./KanbanCard";
 
-export default function Column({ col, itemIds, getOrderById, onEdit, onDelete }) {
+export default function Column({ col, itemIds, getOrderById, onEdit, onDelete, debtFilter = 'all', onToggleDebtFilter }) {
   // Estado para colapsar solo la columna de entregados (auto-colapsa si hay más de 8 pedidos)
   const [isCollapsed, setIsCollapsed] = useState(false);
   const isCollapsible = col.key === "entregado";
@@ -31,6 +31,14 @@ export default function Column({ col, itemIds, getOrderById, onEdit, onDelete })
         return order && order.pending_amount > 0;
       }).length
     : 0;
+
+  // Filtrar itemIds según el filtro de deuda activo
+  const filteredItemIds = showDebtCounter && debtFilter === 'debt'
+    ? itemIds.filter(id => {
+        const order = getOrderById(id);
+        return order && order.pending_amount > 0;
+      })
+    : itemIds;
 
   // Si está colapsada, usar un estilo compacto y ancho fijo para apilar
   const collapsedStyle = isCollapsed ? "w-[260px] max-w-xs min-w-[220px]" : "";
@@ -58,16 +66,29 @@ export default function Column({ col, itemIds, getOrderById, onEdit, onDelete })
           <span>{col.title}</span>
         </div>
         <div className="ml-2 mr-1 flex items-center gap-1.5">
-          <span className="inline-flex items-center justify-center rounded-full bg-slate-200 text-slate-700 text-sm font-semibold px-2 py-0.5 min-w-[1.5rem]">
+          <button
+            onClick={() => onToggleDebtFilter?.(col.key, 'all')}
+            className={`inline-flex items-center justify-center rounded-full text-sm font-semibold px-2 py-0.5 min-w-[1.5rem] transition-all ${
+              debtFilter === 'all' 
+                ? 'bg-sky-500 text-white ring-2 ring-sky-300' 
+                : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
+            }`}
+            title={`${debtFilter === 'all' ? 'Mostrando' : 'Mostrar'} todos los pedidos (${itemIds.length})`}
+          >
             {itemIds.length}
-          </span>
+          </button>
           {showDebtCounter && ordersWithDebt > 0 && (
-            <span 
-              className="inline-flex items-center justify-center rounded-full bg-amber-100 text-amber-800 ring-1 ring-amber-300 text-xs font-bold px-2 py-0.5 min-w-[1.5rem]"
-              title={`${ordersWithDebt} pedido${ordersWithDebt !== 1 ? 's' : ''} con deuda pendiente`}
+            <button
+              onClick={() => onToggleDebtFilter?.(col.key, 'debt')}
+              className={`inline-flex items-center justify-center rounded-full text-xs font-bold px-2 py-0.5 min-w-[1.5rem] transition-all ${
+                debtFilter === 'debt'
+                  ? 'bg-amber-500 text-white ring-2 ring-amber-300'
+                  : 'bg-amber-100 text-amber-800 ring-1 ring-amber-300 hover:bg-amber-200'
+              }`}
+              title={`${debtFilter === 'debt' ? 'Mostrando' : 'Mostrar solo'} pedido${ordersWithDebt !== 1 ? 's' : ''} con deuda (${ordersWithDebt})`}
             >
               💰 {ordersWithDebt}
-            </span>
+            </button>
           )}
         </div>
       </header>
@@ -78,8 +99,8 @@ export default function Column({ col, itemIds, getOrderById, onEdit, onDelete })
           className="kanban-column overflow-y-auto overscroll-contain touch-pan-y ios-smooth px-2 pb-3 max-h-[calc(100vh-220px)] min-h-12"
           style={isOver ? { background: "rgba(148,163,184,0.12)" } : undefined}
         >
-          <SortableContext id={col.key} items={itemIds} strategy={verticalListSortingStrategy}>
-            {itemIds.map((id) => {
+          <SortableContext id={col.key} items={filteredItemIds} strategy={verticalListSortingStrategy}>
+            {filteredItemIds.map((id) => {
               const order = getOrderById(id);
               if (!order) return null;
               return (
@@ -118,7 +139,12 @@ export default function Column({ col, itemIds, getOrderById, onEdit, onDelete })
         >
           <div className="text-center">
             <div className="font-medium">Columna colapsada</div>
-            <div className="text-xs">{itemIds.length} pedidos entregados</div>
+            <div className="text-xs">
+              {debtFilter === 'debt' 
+                ? `${filteredItemIds.length} pedido${filteredItemIds.length !== 1 ? 's' : ''} con deuda`
+                : `${itemIds.length} pedidos entregados`
+              }
+            </div>
             <div className="text-xs">haz click en <strong>&gt;</strong> para expandir</div>
           </div>
           {isOver && (
