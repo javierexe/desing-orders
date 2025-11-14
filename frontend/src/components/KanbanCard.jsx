@@ -55,6 +55,10 @@ const KanbanCard = React.memo(function KanbanCard({
   const DeliveryIcon = method === "despacho" ? Truck : Store;
   const methodLabel = method === "despacho" ? "Despacho" : "Retiro";
 
+  // Detectar si hay deuda pendiente en pedidos listos o entregados
+  const hasPendingDebt = (isReady || isDelivered) && order?.pending_amount > 0;
+  const pendingAmount = order?.pending_amount || 0;
+
   return (
     <article
       ref={setNodeRef}
@@ -179,6 +183,15 @@ const KanbanCard = React.memo(function KanbanCard({
             {order.title}
           </div>
           <div className="mt-0.5 text-xs text-slate-500">{order.client_name}</div>
+
+          {/* Badge de deuda pendiente (destacado para listo/entregado) */}
+          {hasPendingDebt && (
+            <div className="mt-2">
+              <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold bg-amber-100 text-amber-800 ring-2 ring-amber-300 animate-pulse">
+                💰 Deuda: {parseInt(pendingAmount).toLocaleString('es-CL', { style: 'currency', currency: 'CLP' })}
+              </span>
+            </div>
+          )}
 
           <div className="mt-2 flex flex-wrap items-center gap-2 justify-between mr-8">
             {order.due_date ? (

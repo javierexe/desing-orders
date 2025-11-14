@@ -23,6 +23,15 @@ export default function Column({ col, itemIds, getOrderById, onEdit, onDelete })
     data: { columnId: col.key },
   });
 
+  // Calcular pedidos con deuda pendiente (solo para "listo" y "entregado")
+  const showDebtCounter = col.key === "listo" || col.key === "entregado";
+  const ordersWithDebt = showDebtCounter 
+    ? itemIds.filter(id => {
+        const order = getOrderById(id);
+        return order && order.pending_amount > 0;
+      }).length
+    : 0;
+
   // Si está colapsada, usar un estilo compacto y ancho fijo para apilar
   const collapsedStyle = isCollapsed ? "w-[260px] max-w-xs min-w-[220px]" : "";
   return (
@@ -48,9 +57,19 @@ export default function Column({ col, itemIds, getOrderById, onEdit, onDelete })
           )}
           <span>{col.title}</span>
         </div>
-        <span className="ml-2 mr-1 inline-flex items-center justify-center rounded-full bg-slate-200 text-slate-700 text-sm font-semibold px-2 py-0.5 min-w-[1.5rem]">
-          {itemIds.length}
-        </span>
+        <div className="ml-2 mr-1 flex items-center gap-1.5">
+          <span className="inline-flex items-center justify-center rounded-full bg-slate-200 text-slate-700 text-sm font-semibold px-2 py-0.5 min-w-[1.5rem]">
+            {itemIds.length}
+          </span>
+          {showDebtCounter && ordersWithDebt > 0 && (
+            <span 
+              className="inline-flex items-center justify-center rounded-full bg-amber-100 text-amber-800 ring-1 ring-amber-300 text-xs font-bold px-2 py-0.5 min-w-[1.5rem]"
+              title={`${ordersWithDebt} pedido${ordersWithDebt !== 1 ? 's' : ''} con deuda pendiente`}
+            >
+              💰 {ordersWithDebt}
+            </span>
+          )}
+        </div>
       </header>
 
       {!isCollapsed && (

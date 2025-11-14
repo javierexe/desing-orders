@@ -111,6 +111,18 @@ export default function ClientAutocomplete({ onSelect, value, placeholder = "Bus
 
   function handleInputFocus() {
     setShowSuggestions(true);
+    // Si hay un valor en el input, intentar buscar coincidencias exactas
+    // para ayudar al usuario a encontrar el cliente actualizado
+    if (inputValue.trim()) {
+      const exactMatch = clientes.find(c => 
+        c.nombre.toLowerCase() === inputValue.toLowerCase()
+      );
+      if (!exactMatch) {
+        // Si no hay coincidencia exacta, limpiar el input para facilitar la búsqueda
+        // (opcional: podrías comentar estas líneas si prefieres mantener el valor)
+        // setInputValue("");
+      }
+    }
   }
 
   function handleClientSelect(cliente) {
@@ -170,6 +182,19 @@ export default function ClientAutocomplete({ onSelect, value, placeholder = "Bus
     }
   }
 
+  // Verificar si el cliente actual existe en la base de datos
+  const clienteExiste = inputValue.trim() && clientes.some(c => 
+    c.nombre.toLowerCase() === inputValue.trim().toLowerCase()
+  );
+  
+  // Buscar coincidencias aproximadas (para sugerir actualizaciones)
+  const clientesSimilares = inputValue.trim() ? clientes.filter(c => {
+    const nombre = c.nombre.toLowerCase();
+    const input = inputValue.trim().toLowerCase();
+    // Buscar coincidencias parciales (el nombre del cliente contiene parte del input o viceversa)
+    return nombre.includes(input) || input.includes(nombre);
+  }).slice(0, 3) : [];
+
   return (
     <div className="relative w-full">
       {/* Input principal */}
@@ -183,9 +208,18 @@ export default function ClientAutocomplete({ onSelect, value, placeholder = "Bus
           onFocus={handleInputFocus}
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
-          className="w-full pl-10 pr-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-sky-400 focus:border-sky-400 outline-none"
+          className={`w-full pl-10 pr-3 py-2 border rounded-xl focus:ring-2 focus:ring-sky-400 focus:border-sky-400 outline-none ${
+            inputValue.trim() && !clienteExiste && clientes.length > 0
+              ? 'border-amber-300 bg-amber-50/30'
+              : 'border-slate-300'
+          }`}
           autoComplete="off"
         />
+        {inputValue.trim() && !clienteExiste && clientes.length > 0 && clientesSimilares.length > 0 && (
+          <div className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-amber-600 font-medium">
+            ⚠️ Cliente desactualizado
+          </div>
+        )}
         {loading && (
           <div className="absolute right-3 top-1/2 -translate-y-1/2">
             <div className="w-4 h-4 border-2 border-slate-300 border-t-sky-600 rounded-full animate-spin" />
@@ -199,6 +233,14 @@ export default function ClientAutocomplete({ onSelect, value, placeholder = "Bus
           ref={dropdownRef}
           className="absolute z-50 mt-1 w-full bg-white border border-slate-200 rounded-xl shadow-lg max-h-80 overflow-y-auto"
         >
+          {/* Mensaje de cliente desactualizado */}
+          {inputValue.trim() && !clienteExiste && clientesSimilares.length > 0 && (
+            <div className="px-4 py-2 bg-amber-50 border-b border-amber-200 text-xs text-amber-800">
+              <div className="font-semibold mb-1">⚠️ El cliente podría estar desactualizado</div>
+              <div>Selecciona el cliente actualizado de la lista:</div>
+            </div>
+          )}
+          
           {sugerencias.length > 0 ? (
             <>
               {sugerencias.map((cliente, idx) => (

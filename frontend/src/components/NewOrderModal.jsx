@@ -484,6 +484,14 @@ export default function NewOrderModal({
       return;
     }
 
+    // Auto-transición: Si el pedido está en "pre-pedido" y se detecta un abono,
+    // cambiar automáticamente a "recibido"
+    if (form.status === "pre-pedido" && detectedAmount > 0) {
+      console.log('🔄 Auto-transición: pre-pedido → recibido (abono detectado)');
+      setForm(prev => ({ ...prev, status: "recibido" }));
+      showToast('✅ Pedido cambiado a "Recibido" automáticamente', 'info');
+    }
+
     // Si es modo manual, solo marcar el item para entrada manual
     if (mode === 'manual') {
       setManualEntryItemId(itemId);
