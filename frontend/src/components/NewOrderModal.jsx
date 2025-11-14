@@ -374,6 +374,13 @@ export default function NewOrderModal({
     }
   };
 
+  // Prevenir submit del formulario al presionar Enter en inputs
+  const preventEnterSubmit = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+    }
+  };
+
   const handlePaste = async (e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -958,6 +965,7 @@ export default function NewOrderModal({
               required
               value={form.title}
               onChange={(e) => setForm({ ...form, title: e.target.value })}
+              onKeyDown={preventEnterSubmit}
               className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 outline-none focus:ring-2 focus:ring-sky-400"
               placeholder="Nombre del proyecto"
             />
@@ -994,6 +1002,7 @@ export default function NewOrderModal({
               value={form.due_date}
               min={editMode ? undefined : todayISO()}
               onChange={(e) => setForm({ ...form, due_date: e.target.value })}
+              onKeyDown={preventEnterSubmit}
               className={`mt-1 w-full rounded-xl border px-3 py-2 outline-none focus:ring-2 focus:ring-sky-400 ${
                 editMode && form.due_date && isBeforeTodayISO(form.due_date)
                   ? 'border-amber-300 bg-amber-50'
@@ -1016,6 +1025,7 @@ export default function NewOrderModal({
                 type="date"
                 value={form.delivered_date}
                 onChange={(e) => setForm({ ...form, delivered_date: e.target.value })}
+                onKeyDown={preventEnterSubmit}
                 className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 outline-none focus:ring-2 focus:ring-sky-400"
               />
               <span className="text-xs text-slate-500 mt-1 block">

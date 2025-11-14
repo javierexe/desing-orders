@@ -5,6 +5,13 @@ import ProductAutocomplete from "./ProductAutocomplete";
 
 function OrderItemsEditor({ items, editMode = false, manualEntryItemId, onManualEntryCleared, handleAdd, handleDelete, handleChange, handleClone }) {
 
+  // Prevenir submit del formulario al presionar Enter en cualquier input
+  function handleKeyDown(e) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+    }
+  }
+
   function handleProductSelect(idx, producto) {
     if (!producto) {
       // Si limpia el autocompletado, solo actualizar descripción
@@ -97,6 +104,7 @@ function OrderItemsEditor({ items, editMode = false, manualEntryItemId, onManual
                 min={1}
                 value={item.quantity}
                 onChange={e => handleQuantityChange(idx, parseInt(e.target.value) || 1)}
+                onKeyDown={handleKeyDown}
                 className="w-full rounded-xl border border-slate-300 px-3 py-2 text-center font-semibold"
               />
             </label>
@@ -112,6 +120,7 @@ function OrderItemsEditor({ items, editMode = false, manualEntryItemId, onManual
                     const value = e.target.value.replace(/[^0-9]/g, '');
                     handleChange(idx, "price", parseInt(value) || 0);
                   }}
+                  onKeyDown={handleKeyDown}
                   className="w-full rounded-xl border border-slate-300 pl-7 pr-3 py-2 text-right font-semibold text-sm"
                   placeholder="0"
                 />
@@ -136,6 +145,7 @@ function OrderItemsEditor({ items, editMode = false, manualEntryItemId, onManual
                       handleChange(idx, "paid_amount", numValuePesos);
                     }
                   }}
+                  onKeyDown={handleKeyDown}
                   className={`w-full rounded-xl border pl-7 pr-3 py-2 text-right font-semibold text-sm transition-all duration-300 ${
                     manualEntryItemId && String(item.id) === String(manualEntryItemId)
                       ? 'border-orange-400 bg-orange-50 shadow-lg ring-2 ring-orange-200 animate-pulse'
@@ -155,6 +165,7 @@ function OrderItemsEditor({ items, editMode = false, manualEntryItemId, onManual
                 value={item.due_date}
                 min={editMode ? undefined : todayISO()}
                 onChange={e => handleChange(idx, "due_date", e.target.value)}
+                onKeyDown={handleKeyDown}
                 className={`w-full rounded-xl border px-3 py-2 text-sm ${
                   editMode && item.due_date && isBeforeTodayISO(item.due_date)
                     ? 'border-amber-300 bg-amber-50'
