@@ -3,7 +3,7 @@ import React from "react";
 import { Trash, Copy } from "lucide-react";
 import ProductAutocomplete from "./ProductAutocomplete";
 
-function OrderItemsEditor({ items, manualEntryItemId, onManualEntryCleared, handleAdd, handleDelete, handleChange, handleClone }) {
+function OrderItemsEditor({ items, editMode = false, manualEntryItemId, onManualEntryCleared, handleAdd, handleDelete, handleChange, handleClone }) {
 
   function handleProductSelect(idx, producto) {
     if (!producto) {
@@ -44,6 +44,11 @@ function OrderItemsEditor({ items, manualEntryItemId, onManualEntryCleared, hand
     const m = String(t.getMonth() + 1).padStart(2, "0");
     const d = String(t.getDate()).padStart(2, "0");
     return `${y}-${m}-${d}`;
+  }
+
+  // Helper para verificar si una fecha es anterior a hoy
+  function isBeforeTodayISO(iso) {
+    return !!iso && iso < todayISO();
   }
   return (
     <div className="space-y-2">
@@ -148,9 +153,14 @@ function OrderItemsEditor({ items, manualEntryItemId, onManualEntryCleared, hand
               <input
                 type="date"
                 value={item.due_date}
-                min={todayISO()}
+                min={editMode ? undefined : todayISO()}
                 onChange={e => handleChange(idx, "due_date", e.target.value)}
-                className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                className={`w-full rounded-xl border px-3 py-2 text-sm ${
+                  editMode && item.due_date && isBeforeTodayISO(item.due_date)
+                    ? 'border-amber-300 bg-amber-50'
+                    : 'border-slate-300'
+                }`}
+                title={editMode && item.due_date && isBeforeTodayISO(item.due_date) ? 'Fecha en el pasado (edición permitida)' : ''}
                 required
               />
             </label>

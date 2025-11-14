@@ -266,7 +266,9 @@ export default function NewOrderModal({
     // si quieres due_date obligatorio: && form.due_date?.trim()
   );
 
-  const isDueInvalid = !!form.due_date && isBeforeTodayISO(form.due_date);
+  // En modo edición, permitir fechas pasadas (solo advertir visualmente)
+  // En modo creación, la fecha mínima se aplica en el input HTML
+  const isDueInvalid = !editMode && !!form.due_date && isBeforeTodayISO(form.due_date);
 
   // Subir uno o varios comprobantes; guarda las URLs en form.abono_images
   async function handleFileChange(e) {
@@ -983,10 +985,20 @@ export default function NewOrderModal({
             <input
               type="date"
               value={form.due_date}
-              min={todayISO()}
+              min={editMode ? undefined : todayISO()}
               onChange={(e) => setForm({ ...form, due_date: e.target.value })}
-              className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 outline-none focus:ring-2 focus:ring-sky-400"
+              className={`mt-1 w-full rounded-xl border px-3 py-2 outline-none focus:ring-2 focus:ring-sky-400 ${
+                editMode && form.due_date && isBeforeTodayISO(form.due_date)
+                  ? 'border-amber-300 bg-amber-50'
+                  : 'border-slate-300'
+              }`}
+              title={editMode && form.due_date && isBeforeTodayISO(form.due_date) ? 'Fecha en el pasado (edición permitida)' : ''}
             />
+            {editMode && form.due_date && isBeforeTodayISO(form.due_date) && (
+              <span className="text-xs text-amber-600 mt-1 block">
+                ⚠️ Fecha en el pasado (se puede guardar en modo edición)
+              </span>
+            )}
           </label>
 
           {/* Campo de fecha de entrega - solo visible si el pedido está entregado */}
@@ -1009,6 +1021,7 @@ export default function NewOrderModal({
           <div className="col-span-full">
             <OrderItemsEditor
               items={items}
+              editMode={editMode}
               manualEntryItemId={manualEntryItemId}
               onManualEntryCleared={() => setManualEntryItemId(null)}
               handleAdd={() => {
