@@ -1,12 +1,14 @@
 import { useState, useEffect, useRef } from "react";
 import { Search, Plus, Package, Tag, AlertCircle } from "lucide-react";
 import { api } from "../lib/api";
+import { useConfirmDialog } from "./ConfirmDialog";
 
 // Cache global para productos (compartido entre todas las instancias)
 let productosCache = null;
 let loadingPromise = null;
 
 export default function ProductAutocomplete({ onSelect, value, placeholder = "Buscar producto..." }) {
+  const { showAlert } = useConfirmDialog();
   const [productos, setProductos] = useState(productosCache || []);
   const [inputValue, setInputValue] = useState(value || "");
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -234,7 +236,11 @@ export default function ProductAutocomplete({ onSelect, value, placeholder = "Bu
       setShowQuickCreate(false);
     } catch (error) {
       console.error("Error creando producto:", error);
-      alert("Error al crear producto. Por favor intenta nuevamente.");
+      showAlert({
+        title: "Error al crear producto",
+        message: "Por favor intenta nuevamente.",
+        type: "warning"
+      });
     }
   }
 
@@ -398,13 +404,21 @@ function QuickCreateProductModal({ initialName, onSave, onCancel }) {
     
     // Validar que tenga nombre y categoría
     if (!formData.nombre.trim()) {
-      alert("El nombre del producto es obligatorio");
+      showAlert({
+        title: "Campo obligatorio",
+        message: "El nombre del producto es obligatorio",
+        type: "warning"
+      });
       return;
     }
     
     // Si no requiere cotización, debe tener precio
     if (!formData.requiere_cotizacion && !formData.precio_base) {
-      alert("Debes ingresar un precio o marcar 'Requiere cotización'");
+      showAlert({
+        title: "Precio requerido",
+        message: "Debes ingresar un precio o marcar 'Requiere cotización'",
+        type: "warning"
+      });
       return;
     }
 

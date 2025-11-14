@@ -2,6 +2,7 @@
 import React from "react";
 import { isOverdue, isSoon, isThisWeek, parseLocalDateISO, humanDueLabel} from "./kanbanUtils";
 import { Calendar, Truck, Store, Pencil, GripVertical, Trash, Eye } from "lucide-react";
+import { useConfirmDialog } from "./ConfirmDialog";
 
 const KanbanCard = React.memo(function KanbanCard({
   order,
@@ -14,6 +15,8 @@ const KanbanCard = React.memo(function KanbanCard({
   onDelete,
   isDragging, // opcional (si lo pasas desde SortableCard)
 }) {
+  const { showConfirm } = useConfirmDialog();
+  
   // --- Cálculos (dentro del componente) ---
   const due = order?.due_date || null;
   const isDelivered = order?.status === "entregado";
@@ -94,17 +97,27 @@ const KanbanCard = React.memo(function KanbanCard({
           type="button"
           title="Eliminar pedido"
           aria-label="Eliminar pedido"
-          onClick={(e) => {
+          onClick={async (e) => {
             e.stopPropagation();
-            if (window.confirm("¿Seguro que quieres eliminar este pedido?")) {
+            const confirmed = await showConfirm({
+              title: "Confirmar eliminación",
+              message: `¿Seguro que quieres eliminar el pedido ${order.code}?`,
+              type: "danger"
+            });
+            if (confirmed) {
               onDelete?.(order);
             }
           }}
-          onKeyDown={(e) => {
+          onKeyDown={async (e) => {
             if (e.key === "Enter" || e.key === " ") {
               e.preventDefault();
               e.stopPropagation();
-              if (window.confirm("¿Seguro que quieres eliminar este pedido?")) {
+              const confirmed = await showConfirm({
+                title: "Confirmar eliminación",
+                message: `¿Seguro que quieres eliminar el pedido ${order.code}?`,
+                type: "danger"
+              });
+              if (confirmed) {
                 onDelete?.(order);
               }
             }

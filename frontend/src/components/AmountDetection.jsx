@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Search, CheckCircle, XCircle, Loader2, Eye, EyeOff } from 'lucide-react';
 import { extractTextFromImage } from '../utils/ocrServiceFrontend'; // OCR Frontend con Tesseract.js
 import { detectMostLikelyAmount, formatChileanAmount } from '../utils/amountParser';
+import { useConfirmDialog } from './ConfirmDialog';
 
 /**
  * Componente para detección automática de montos en comprobantes
@@ -16,6 +17,7 @@ const AmountDetection = ({
   onSkipFile, // Nueva prop para omitir archivo sin subir
   isVisible = true 
 }) => {
+  const { showAlert } = useConfirmDialog();
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [detectionResult, setDetectionResult] = useState(null);
   const [error, setError] = useState(null);
@@ -84,7 +86,11 @@ const AmountDetection = ({
    */
   const confirmAmount = () => {
     if (!selectedItemId) {
-      alert('Por favor selecciona un item para vincular este comprobante');
+      showAlert({
+        title: 'Selecciona un item',
+        message: 'Por favor selecciona un item para vincular este comprobante',
+        type: 'info'
+      });
       return;
     }
     

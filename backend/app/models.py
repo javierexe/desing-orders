@@ -96,6 +96,7 @@ class Cliente(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     nombre = Column(String(255), nullable=False)
+    contacto = Column(String(255), nullable=True)  # Nombre del contacto (para empresas)
     email = Column(String(255), nullable=True, index=True)
     telefono = Column(String(50), nullable=True)
     direccion = Column(Text, nullable=True)

@@ -7,6 +7,8 @@ import NewOrderModal from "./components/NewOrderModal.jsx";
 import PreviewModal from "./components/PreviewModal.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
 import ProductAdmin from "./pages/ProductAdmin.jsx";
+import ClientAdmin from "./pages/ClientAdmin.jsx";
+import { ConfirmDialogProvider } from "./components/ConfirmDialog.jsx";
 import { api } from "./lib/api.js";
 
 // Helpers KPI
@@ -199,6 +201,14 @@ function AppInner() {
             </Layout>
           }
         />
+        <Route
+          path="/admin/clients"
+          element={
+            <Layout title="Clientes">
+              <ClientAdmin />
+            </Layout>
+          }
+        />
       </Routes>
     </>
   );
@@ -207,7 +217,9 @@ function AppInner() {
       function App() {
         return (
           <BrowserRouter>
-            <AppInner />
+            <ConfirmDialogProvider>
+              <AppInner />
+            </ConfirmDialogProvider>
           </BrowserRouter>
         );
       }

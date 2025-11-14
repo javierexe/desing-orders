@@ -2,8 +2,10 @@ import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { useReactTable, getCoreRowModel, getSortedRowModel, flexRender } from '@tanstack/react-table';
 import { toast, Toaster } from 'sonner';
 import { Trash2, Package, Tag, Palette, Shirt, Gift, BookOpen, Box, Sparkles, Heart, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { useConfirmDialog } from '../../components/ConfirmDialog';
 
 export default function ProductGrid() {
+  const { showConfirm } = useConfirmDialog();
   const [data, setData] = useState([]);
   const [categories, setCategories] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState(null);
@@ -204,6 +206,18 @@ export default function ProductGrid() {
   }
 
   async function handleDelete(productId) {
+    // Buscar el nombre del producto para el mensaje de confirmación
+    const product = data.find(p => p.id === productId);
+    const productName = product?.nombre || 'este producto';
+    
+    const confirmed = await showConfirm({
+      title: 'Confirmar eliminación',
+      message: `¿Estás seguro de eliminar "${productName}"?\n\nEsta acción no se puede deshacer.`,
+      type: 'danger'
+    });
+    
+    if (!confirmed) return;
+    
     try {
       const res = await fetch('/api/productos/bulk', {
         method: 'POST',
@@ -222,6 +236,14 @@ export default function ProductGrid() {
 
   async function handleDeleteSelected() {
     if (selectedRows.size === 0) return;
+
+    const confirmed = await showConfirm({
+      title: 'Confirmar eliminación',
+      message: `¿Eliminar ${selectedRows.size} producto(s) seleccionado(s)?\n\nEsta acción no se puede deshacer.`,
+      type: 'danger'
+    });
+    
+    if (!confirmed) return;
 
     const ids = Array.from(selectedRows);
     try {
@@ -630,22 +652,26 @@ export default function ProductGrid() {
     {
       accessorKey: 'activo',
       header: 'Estado',
-      cell: ({ row, getValue }) => (
-        <button
-          onClick={() => {
-            const newValue = !getValue();
-            handleCellEdit(row.original.id, 'activo', newValue);
-            handleCellBlur(row.original.id, 'activo', newValue);
-          }}
-          className={`px-2 py-1 rounded-full text-xs font-medium transition-colors ${
-            getValue()
-              ? 'bg-green-100 text-green-700 hover:bg-green-200'
-              : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
-          }`}
-        >
-          {getValue() ? '✓ Activo' : 'Inactivo'}
-        </button>
-      ),
+      cell: ({ row, getValue }) => {
+        const isActive = getValue();
+        return (
+          <div className="flex items-center justify-center">
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                defaultChecked={isActive}
+                onChange={(e) => {
+                  const newValue = e.target.checked;
+                  handleCellEdit(row.original.id, 'activo', newValue);
+                  handleCellBlur(row.original.id, 'activo', newValue);
+                }}
+                className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div>
+            </label>
+          </div>
+        );
+      },
       enableSorting: true,
       size: 90,
     },

@@ -329,6 +329,113 @@ def create_categoria(payload: schemas.CategoriaCreate, db: Session = Depends(get
     return cat
 
 
+# ==================== CLIENTES ====================
+
+@app.get("/clientes", response_model=List[schemas.ClienteOut])
+def get_clientes(
+    search: Optional[str] = None,
+    tipo: Optional[str] = None,
+    activo: bool = True,
+    db: Session = Depends(get_db)
+):
+    """
+    Obtiene clientes con filtros opcionales:
+    - search: busca en nombre, email, teléfono y RUT
+    - tipo: filtra por tipo (particular|empresa)
+    - activo: solo clientes activos (default True)
+    """
+    query = db.query(models.Cliente).filter(models.Cliente.activo == activo)
+    
+    if tipo:
+        query = query.filter(models.Cliente.tipo == tipo)
+    
+    if search:
+        search_pattern = f"%{search}%"
+        query = query.filter(
+            (models.Cliente.nombre.ilike(search_pattern)) |
+            (models.Cliente.email.ilike(search_pattern)) |
+            (models.Cliente.telefono.ilike(search_pattern)) |
+            (models.Cliente.rut.ilike(search_pattern))
+        )
+    
+    clientes = query.order_by(models.Cliente.nombre).all()
+    return clientes
+
+
+@app.get("/clientes/{cliente_id}", response_model=schemas.ClienteOut)
+def get_cliente(cliente_id: int, db: Session = Depends(get_db)):
+    """Obtiene un cliente por ID"""
+    cliente = db.query(models.Cliente).filter(models.Cliente.id == cliente_id).first()
+    if not cliente:
+        raise HTTPException(status_code=404, detail="Cliente no encontrado")
+    return cliente
+
+
+@app.post("/clientes", response_model=schemas.ClienteOut, status_code=201)
+def create_cliente(cliente: schemas.ClienteCreate, db: Session = Depends(get_db)):
+    """Crea un nuevo cliente"""
+    # Validar RUT único si se proporciona
+    if cliente.rut:
+        existing = db.query(models.Cliente).filter(models.Cliente.rut == cliente.rut).first()
+        if existing:
+            raise HTTPException(status_code=409, detail="Ya existe un cliente con ese RUT")
+    
+    nuevo_cliente = models.Cliente(
+        nombre=cliente.nombre,
+        email=cliente.email,
+        telefono=cliente.telefono,
+        direccion=cliente.direccion,
+        rut=cliente.rut,
+        tipo=cliente.tipo,
+        preferencias=cliente.preferencias
+    )
+    db.add(nuevo_cliente)
+    db.commit()
+    db.refresh(nuevo_cliente)
+    return nuevo_cliente
+
+
+@app.put("/clientes/{cliente_id}", response_model=schemas.ClienteOut)
+def update_cliente(cliente_id: int, cliente: schemas.ClienteUpdate, db: Session = Depends(get_db)):
+    """Actualiza un cliente existente"""
+    db_cliente = db.query(models.Cliente).filter(models.Cliente.id == cliente_id).first()
+    if not db_cliente:
+        raise HTTPException(status_code=404, detail="Cliente no encontrado")
+    
+    # Validar RUT único si se está cambiando
+    if cliente.rut and cliente.rut != db_cliente.rut:
+        existing = db.query(models.Cliente).filter(
+            models.Cliente.rut == cliente.rut,
+            models.Cliente.id != cliente_id
+        ).first()
+        if existing:
+            raise HTTPException(status_code=409, detail="Ya existe un cliente con ese RUT")
+    
+    # Actualizar solo los campos enviados
+    update_data = cliente.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(db_cliente, field, value)
+    
+    db.commit()
+    db.refresh(db_cliente)
+    return db_cliente
+
+
+@app.delete("/clientes/{cliente_id}", status_code=204)
+def delete_cliente(cliente_id: int, db: Session = Depends(get_db)):
+    """Elimina (desactiva) un cliente"""
+    cliente = db.query(models.Cliente).filter(models.Cliente.id == cliente_id).first()
+    if not cliente:
+        raise HTTPException(status_code=404, detail="Cliente no encontrado")
+    
+    # Desactivar en lugar de eliminar
+    cliente.activo = False
+    db.commit()
+    return Response(status_code=204)
+
+
+# ==================== PRODUCTOS ====================
+
 @app.get("/productos", response_model=List[schemas.ProductoOut])
 def get_productos(
     categoria_id: Optional[int] = None,

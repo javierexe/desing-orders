@@ -16,7 +16,7 @@ export default function Layout({
     { label: "Pedidos",   key: "orders",    path: "/pedidos" },
     { label: "Dashboard", key: "dashboard", path: "/dashboard" },
     { label: "Productos", key: "products", path: "/admin/products" },
-    { label: "Clientes",  key: "clients",   path: "#", disabled: true },
+    { label: "Clientes",  key: "clients",   path: "/admin/clients" },
     { label: "Reportes",  key: "reports",   path: "#", disabled: true },
     { label: "Configuración", key: "settings", path: "#", disabled: true },
   ];

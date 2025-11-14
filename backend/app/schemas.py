@@ -195,6 +195,7 @@ class ProductoBulkUpsertResponse(BaseModel):
 # ==================== CLIENTES ====================
 class ClienteBase(BaseModel):
     nombre: str
+    contacto: Optional[str] = None  # Nombre del contacto (principalmente para empresas)
     email: Optional[str] = None
     telefono: Optional[str] = None
     direccion: Optional[str] = None
@@ -207,6 +208,7 @@ class ClienteCreate(ClienteBase):
 
 class ClienteUpdate(BaseModel):
     nombre: Optional[str] = None
+    contacto: Optional[str] = None
     email: Optional[str] = None
     telefono: Optional[str] = None
     direccion: Optional[str] = None
