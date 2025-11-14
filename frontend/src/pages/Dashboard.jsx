@@ -1,128 +1,138 @@
-// frontend/src/pages/Dashboard.jsx// frontend/src/pages/Dashboard.jsx
+// frontend/src/pages/Dashboard.jsx
+import React, { useMemo, useState } from "react";
+import { TrendingUp, DollarSign, CreditCard, AlertCircle, Calendar, Users, Package, X } from "lucide-react";
+import { ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
-import React, { useMemo } from "react";export default function Dashboard({ kpis = {}, orders = [] }) {
+// Paleta de colores consistente
+const COLORS = {
+  facturacion: "#64748b",  // Gris azulado
+  cobrado: "#22c55e",      // Verde
+  deuda: "#f59e0b",        // Amber/Naranja
+  pedidos: "#ff6b00"       // Naranja brillante para línea
+};
 
-import { TrendingUp, DollarSign, CreditCard, AlertCircle, Calendar, Users, Package } from "lucide-react";  const cards = [
-
-    { label: "Recibidos",   value: kpis.recibido || 0,   icon: "📥" },
-
-export default function Dashboard({ orders = [] }) {    { label: "En proceso", value: kpis.en_proceso || 0,icon: "🛠️" },
-
-  // Función para formatear montos en CLP    { label: "Listos",      value: kpis.listo || 0,      icon: "✅" },
-
-  const formatCLP = (amount) => {    { label: "Entregados",  value: kpis.entregado || 0,  icon: "📦" },
-
-    return new Intl.NumberFormat('es-CL', {    { label: "Atrasados",   value: kpis.overdue || 0,    icon: "⏰", danger: (kpis.overdue||0) > 0, hint: (kpis.soon||0) > 0 ? `Pronto: ${kpis.soon}` : "" },
-
-      style: 'currency',  ];
-
+export default function Dashboard({ orders = [] }) {
+  const [selectedMonth, setSelectedMonth] = useState(null); // null = mes actual, número = índice del mes
+  
+  const formatCLP = (amount) => {
+    return new Intl.NumberFormat('es-CL', {
+      style: 'currency',
       currency: 'CLP',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(amount);
+  };
 
-      minimumFractionDigits: 0,  return (
-
-      maximumFractionDigits: 0    <div className="space-y-6">
-
-    }).format(amount);      {/* KPIs */}
-
-  };      <section className="grid grid-cols-2 gap-3 md:grid-cols-5">
-
-        {cards.map((c, i) => (
-
-  // Calcular KPIs financieros          <div
-
-  const kpis = useMemo(() => {            key={i}
-
-    const now = new Date();            className={[
-
-    const currentMonth = now.getMonth();              "rounded-2xl border bg-white p-4 shadow-sm",
-
-    const currentYear = now.getFullYear();              c.danger ? "border-rose-300 ring-1 ring-rose-200" : "border-slate-200",
-
-                ].join(" ")}
-
-    let totalMesActual = 0;          >
-
-    let pagadoMesActual = 0;            <div className="flex items-center justify-between">
-
-    let deudaMesActual = 0;              <div className="text-2xl">{c.icon}</div>
-
-    let pedidosMesActual = 0;              <div className={["text-2xl font-semibold", c.danger ? "text-rose-600" : "text-slate-800"].join(" ")}>
-
-    let clientesUnicos = new Set();                {c.value}
-
-    let pedidosAtrasados = 0;              </div>
-
-                </div>
-
-    // Datos por mes (últimos 6 meses)            <div className="mt-1 text-sm text-slate-600">{c.label}</div>
-
-    const mesesData = [];            {c.hint && <div className="mt-1 text-xs text-amber-700">⚠️ {c.hint}</div>}
-
-    for (let i = 5; i >= 0; i--) {          </div>
-
-      const mes = new Date(currentYear, currentMonth - i, 1);        ))}
-
-      const mesNum = mes.getMonth();      </section>
-
+  // Calcular KPIs financieros
+  const kpis = useMemo(() => {
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+    
+    // Datos por mes (últimos 6 meses) usando due_date
+    const mesesData = [];
+    for (let i = 5; i >= 0; i--) {
+      const mes = new Date(currentYear, currentMonth - i, 1);
+      const mesNum = mes.getMonth();
       const yearNum = mes.getFullYear();
-
-            {/* (Opcional) últimos pedidos */}
-
-      const pedidosDelMes = orders.filter(o => {      <section className="rounded-2xl border border-slate-200 bg-white p-4">
-
-        if (!o.created_at) return false;        <h3 className="mb-3 text-lg font-semibold">Últimos pedidos</h3>
-
-        const orderDate = new Date(o.created_at);        <ul className="divide-y divide-slate-100">
-
-        return orderDate.getMonth() === mesNum && orderDate.getFullYear() === yearNum;          {orders.slice(0,5).map(o => (
-
-      });            <li key={o.code} className="py-2 text-sm">
-
-                    <span className="font-medium text-slate-800">{o.title}</span>
-
-      const totalMes = pedidosDelMes.reduce((sum, o) => sum + (o.total_price || 0), 0);              <span className="text-slate-500"> · {o.client_name}</span>
-
-      const pagadoMes = pedidosDelMes.reduce((sum, o) => sum + (o.total_paid || 0), 0);              {o.due_date && <span className="text-slate-500"> · vence en: {o.due_date}</span>}
-
-                  </li>
-
-      mesesData.push({          ))}
-
-        mes: mes.toLocaleDateString('es-CL', { month: 'short', year: 'numeric' }),          {orders.length === 0 && <li className="py-2 text-sm text-slate-500">Sin pedidos aún.</li>}
-
-        total: totalMes,        </ul>
-
-        pagado: pagadoMes,      </section>
-
-        pendiente: totalMes - pagadoMes,    </div>
-
-        pedidos: pedidosDelMes.length  );
-
-      });}
-
+      
+      const pedidosDelMes = orders.filter(o => {
+        if (!o.due_date) return false;
+        const orderDate = new Date(o.due_date);
+        return orderDate.getMonth() === mesNum && orderDate.getFullYear() === yearNum;
+      });
+      
+      const totalMes = pedidosDelMes.reduce((sum, o) => sum + (o.total_price || 0), 0);
+      const pagadoMes = pedidosDelMes.reduce((sum, o) => sum + (o.total_paid || 0), 0);
+      
+      mesesData.push({
+        mes: mes.toLocaleDateString('es-CL', { month: 'short', year: 'numeric' }),
+        total: totalMes,
+        pagado: pagadoMes,
+        pendiente: totalMes - pagadoMes,
+        pedidos: pedidosDelMes.length,
+        mesNum,
+        yearNum
+      });
     }
     
-    // KPIs del mes actual
-    orders.forEach(order => {
-      if (order.created_at) {
-        const orderDate = new Date(order.created_at);
-        if (orderDate.getMonth() === currentMonth && orderDate.getFullYear() === currentYear) {
+    // Filtrar solo meses con datos
+    const mesesConDatos = mesesData.filter(m => m.pedidos > 0);
+    
+    let totalMesActual = 0;
+    let pagadoMesActual = 0;
+    let deudaMesActual = 0;
+    let pedidosMesActual = 0;
+    let clientesUnicos = new Set();
+    let pedidosAtrasados = 0;
+    
+    // Si NO hay filtro (selectedMonth === null): sumar TODOS los pedidos hasta la fecha
+    // Si hay filtro: mostrar solo el mes seleccionado
+    if (selectedMonth === null) {
+      // SIN FILTRO: Acumulado total
+      orders.forEach(order => {
+        if (order.due_date) {
+          const orderDate = new Date(order.due_date);
+          
           totalMesActual += order.total_price || 0;
           pagadoMesActual += order.total_paid || 0;
           deudaMesActual += order.pending_amount || 0;
           pedidosMesActual++;
           if (order.client_name) clientesUnicos.add(order.client_name);
+          
+          // Pedidos atrasados: due_date pasó y NO está en estados terminales
+          const estadosExcluidos = ['entregado', 'cancelado', 'listo'];
+          if (!estadosExcluidos.includes(order.status) && orderDate < now) {
+            pedidosAtrasados++;
+          }
         }
-      }
+      });
+    } else {
+      // CON FILTRO: Solo el mes seleccionado
+      const mesParaKPI = mesesConDatos[selectedMonth];
+      const mesNumKPI = mesParaKPI?.mesNum ?? currentMonth;
+      const yearNumKPI = mesParaKPI?.yearNum ?? currentYear;
       
-      // Pedidos atrasados (no entregados y fecha vencida)
-      if (order.status !== 'entregado' && order.due_date) {
-        const dueDate = new Date(order.due_date);
-        if (dueDate < now) {
-          pedidosAtrasados++;
+      orders.forEach(order => {
+        if (order.due_date) {
+          const orderDate = new Date(order.due_date);
+          if (orderDate.getMonth() === mesNumKPI && orderDate.getFullYear() === yearNumKPI) {
+            totalMesActual += order.total_price || 0;
+            pagadoMesActual += order.total_paid || 0;
+            deudaMesActual += order.pending_amount || 0;
+            pedidosMesActual++;
+            if (order.client_name) clientesUnicos.add(order.client_name);
+            
+            // Pedidos atrasados del mes seleccionado
+            const estadosExcluidos = ['entregado', 'cancelado', 'listo'];
+            if (!estadosExcluidos.includes(order.status) && orderDate < now) {
+              pedidosAtrasados++;
+            }
+          }
         }
-      }
-    });
+      });
+    }
+    
+    // Calcular cambios respecto al mes anterior
+    const indiceActual = selectedMonth !== null ? selectedMonth : mesesConDatos.length - 1;
+    const mesAnterior = indiceActual > 0 ? mesesConDatos[indiceActual - 1] : null;
+    
+    const cambioTotal = mesAnterior && mesAnterior.total > 0 
+      ? ((totalMesActual - mesAnterior.total) / mesAnterior.total) * 100 
+      : null;
+    
+    const cambioPagado = mesAnterior && mesAnterior.pagado > 0 
+      ? ((pagadoMesActual - mesAnterior.pagado) / mesAnterior.pagado) * 100 
+      : null;
+    
+    const cambioDeuda = mesAnterior && mesAnterior.pendiente > 0 
+      ? ((deudaMesActual - mesAnterior.pendiente) / mesAnterior.pendiente) * 100 
+      : null;
+    
+    // Determinar el nombre del mes seleccionado
+    const mesSeleccionado = selectedMonth !== null && mesesConDatos[selectedMonth]
+      ? mesesConDatos[selectedMonth].mes
+      : null;
     
     return {
       totalMesActual,
@@ -131,65 +141,83 @@ export default function Dashboard({ orders = [] }) {    { label: "En proceso", v
       pedidosMesActual,
       clientesUnicos: clientesUnicos.size,
       pedidosAtrasados,
-      mesesData,
-      promedioTicket: pedidosMesActual > 0 ? totalMesActual / pedidosMesActual : 0
+      mesesData: mesesConDatos,
+      promedioTicket: pedidosMesActual > 0 ? totalMesActual / pedidosMesActual : 0,
+      mesSeleccionado,
+      cambioTotal,
+      cambioPagado,
+      cambioDeuda
     };
-  }, [orders]);
+  }, [orders, selectedMonth]);
 
   const cards = [
     {
-      label: "Facturación Mes Actual",
+      label: selectedMonth === null ? "Facturación Total" : "Facturación del Mes",
       value: formatCLP(kpis.totalMesActual),
       icon: DollarSign,
-      color: "blue",
-      description: `${kpis.pedidosMesActual} pedido(s)`
+      color: "slate",
+      bgColor: "bg-slate-50",
+      textColor: "text-slate-700",
+      borderColor: "border-slate-300",
+      description: `${kpis.pedidosMesActual} pedido(s)`,
+      cambio: kpis.cambioTotal,
+      invertido: false
     },
     {
       label: "Ingresos Reales",
       value: formatCLP(kpis.pagadoMesActual),
       icon: TrendingUp,
       color: "green",
-      description: `${kpis.pagadoMesActual > 0 ? Math.round((kpis.pagadoMesActual / kpis.totalMesActual) * 100) : 0}% cobrado`
+      bgColor: "bg-green-50",
+      textColor: "text-green-700",
+      borderColor: "border-green-300",
+      description: `${kpis.totalMesActual > 0 ? Math.round((kpis.pagadoMesActual / kpis.totalMesActual) * 100) : 0}% cobrado`,
+      cambio: kpis.cambioPagado,
+      invertido: false
     },
     {
       label: "Deuda Pendiente",
       value: formatCLP(kpis.deudaMesActual),
       icon: CreditCard,
       color: "amber",
-      description: `Por cobrar este mes`
+      bgColor: "bg-amber-50",
+      textColor: "text-amber-700",
+      borderColor: "border-amber-300",
+      description: selectedMonth === null ? `Por cobrar total` : `Por cobrar este mes`,
+      cambio: kpis.cambioDeuda,
+      invertido: true // Para deuda, disminución es bueno
     },
     {
       label: "Promedio por Pedido",
       value: formatCLP(kpis.promedioTicket),
       icon: Package,
       color: "purple",
+      bgColor: "bg-purple-50",
+      textColor: "text-purple-700",
+      borderColor: "border-purple-300",
       description: `Ticket promedio`
     },
     {
-      label: "Clientes Activos",
+      label: selectedMonth === null ? "Total Clientes" : "Clientes del Mes",
       value: kpis.clientesUnicos,
       icon: Users,
       color: "indigo",
-      description: `Este mes`
+      bgColor: "bg-indigo-50",
+      textColor: "text-indigo-700",
+      borderColor: "border-indigo-300",
+      description: selectedMonth === null ? `Clientes únicos` : `Este mes`
     },
     {
       label: "Pedidos Atrasados",
       value: kpis.pedidosAtrasados,
       icon: AlertCircle,
       color: kpis.pedidosAtrasados > 0 ? "rose" : "slate",
+      bgColor: kpis.pedidosAtrasados > 0 ? "bg-rose-50" : "bg-slate-50",
+      textColor: kpis.pedidosAtrasados > 0 ? "text-rose-700" : "text-slate-700",
+      borderColor: kpis.pedidosAtrasados > 0 ? "border-rose-300" : "border-slate-300",
       description: kpis.pedidosAtrasados > 0 ? "Requieren atención" : "Todo al día"
     }
   ];
-
-  const colorClasses = {
-    blue: "bg-blue-50 text-blue-600 border-blue-200",
-    green: "bg-green-50 text-green-600 border-green-200",
-    amber: "bg-amber-50 text-amber-600 border-amber-200",
-    purple: "bg-purple-50 text-purple-600 border-purple-200",
-    indigo: "bg-indigo-50 text-indigo-600 border-indigo-200",
-    rose: "bg-rose-50 text-rose-600 border-rose-200",
-    slate: "bg-slate-50 text-slate-600 border-slate-200"
-  };
 
   return (
     <div className="space-y-6">
@@ -198,7 +226,10 @@ export default function Dashboard({ orders = [] }) {    { label: "En proceso", v
         <div>
           <h1 className="text-2xl font-bold text-slate-800">Dashboard Financiero</h1>
           <p className="text-sm text-slate-500 mt-1">
-            Resumen de {new Date().toLocaleDateString('es-CL', { month: 'long', year: 'numeric' })}
+            {selectedMonth === null 
+              ? "Acumulado Total hasta la fecha"
+              : `Resumen de ${kpis.mesSeleccionado || new Date().toLocaleDateString('es-CL', { month: 'long', year: 'numeric' })}`
+            }
           </p>
         </div>
         <div className="flex items-center gap-2 text-sm text-slate-600">
@@ -208,19 +239,33 @@ export default function Dashboard({ orders = [] }) {    { label: "En proceso", v
       </div>
 
       {/* KPI Cards */}
-      <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
         {cards.map((card, idx) => {
           const Icon = card.icon;
+          const tieneCambio = card.cambio !== null && card.cambio !== undefined;
+          const esPositivo = card.invertido ? card.cambio < 0 : card.cambio > 0;
+          
           return (
             <div
               key={idx}
-              className={`rounded-xl border-2 p-6 ${colorClasses[card.color]} transition-all hover:shadow-lg`}
+              className={`rounded-xl border-2 p-6 ${card.bgColor} ${card.borderColor} transition-all hover:shadow-lg`}
             >
               <div className="flex items-start justify-between">
                 <div className="flex-1">
-                  <p className="text-sm font-medium opacity-80">{card.label}</p>
-                  <p className="text-3xl font-bold mt-2">{card.value}</p>
+                  <p className="text-sm font-medium opacity-80 ${card.textColor}">{card.label}</p>
+                  <p className={`text-3xl font-bold mt-2 ${card.textColor}`}>{card.value}</p>
                   <p className="text-xs mt-2 opacity-70">{card.description}</p>
+                  
+                  {/* Indicador de cambio */}
+                  {tieneCambio && (
+                    <div className={`flex items-center gap-1 mt-2 text-xs font-semibold ${
+                      esPositivo ? 'text-green-600' : 'text-red-600'
+                    }`}>
+                      {esPositivo ? '↑' : '↓'}
+                      <span>{Math.abs(card.cambio).toFixed(1)}%</span>
+                      <span className="opacity-60">vs anterior</span>
+                    </div>
+                  )}
                 </div>
                 <div className="p-3 rounded-lg bg-white/50">
                   <Icon className="w-6 h-6" />
@@ -231,12 +276,123 @@ export default function Dashboard({ orders = [] }) {    { label: "En proceso", v
         })}
       </section>
 
+      {/* Gráfica de tendencias */}
+      <section className="rounded-xl border-2 border-slate-200 bg-white p-6">
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="text-lg font-semibold flex items-center gap-2">
+            <TrendingUp className="w-5 h-5 text-slate-600" />
+            Evolución Financiera
+            {selectedMonth !== null && (
+              <span className="text-sm font-normal text-blue-600">
+                ({kpis.mesSeleccionado})
+              </span>
+            )}
+          </h3>
+          {selectedMonth !== null && (
+            <button
+              onClick={() => setSelectedMonth(null)}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
+            >
+              <X className="w-4 h-4" />
+              Limpiar filtro
+            </button>
+          )}
+        </div>
+        
+        {/* Gráfico Recharts */}
+        <ResponsiveContainer width="100%" height={300}>
+          <ComposedChart 
+            data={kpis.mesesData}
+            onClick={(data) => {
+              if (data && data.activeTooltipIndex !== undefined) {
+                setSelectedMonth(data.activeTooltipIndex);
+              }
+            }}
+            barGap={-45}
+          >
+            <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+            <XAxis 
+              dataKey="mes" 
+              tick={{ fontSize: 12 }}
+              tickFormatter={(value) => value.split(' ')[0]}
+            />
+            <YAxis 
+              yAxisId="left"
+              tick={{ fontSize: 12 }}
+              tickFormatter={(value) => `$${(value / 1000000).toFixed(1)}M`}
+              stroke={COLORS.facturacion}
+            />
+            <YAxis 
+              yAxisId="right" 
+              orientation="right"
+              tick={{ fontSize: 12, fill: COLORS.pedidos }}
+              stroke={COLORS.pedidos}
+            />
+            <Tooltip 
+              formatter={(value, name) => {
+                if (name === 'Facturación total' || name === 'Monto cobrado' || name === 'Deuda pendiente') {
+                  return formatCLP(value);
+                }
+                return value;
+              }}
+              contentStyle={{ borderRadius: '8px', border: '1px solid #e2e8f0' }}
+            />
+            <Legend />
+            <Bar 
+              yAxisId="left"
+              dataKey="total" 
+              fill={COLORS.facturacion}
+              name="Facturación total"
+              radius={[8, 8, 0, 0]}
+              barSize={60}
+            />
+            <Bar 
+              yAxisId="left"
+              dataKey="pagado" 
+              fill={COLORS.cobrado}
+              name="Monto cobrado"
+              radius={[8, 8, 0, 0]}
+              barSize={60}
+            />
+            <Line 
+              yAxisId="right"
+              type="monotone" 
+              dataKey="pedidos" 
+              stroke={COLORS.pedidos}
+              strokeWidth={3}
+              name="Cantidad de pedidos"
+              dot={{ fill: COLORS.pedidos, r: 6, strokeWidth: 2, stroke: '#fff' }}
+            />
+          </ComposedChart>
+        </ResponsiveContainer>
+        
+        <div className="text-slate-500 text-xs text-center mt-4">
+          💡 Haz clic en un mes para filtrar los KPIs
+        </div>
+      </section>
+
       {/* Tabla de tendencias mensuales */}
       <section className="rounded-xl border-2 border-slate-200 bg-white p-6">
-        <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-          <TrendingUp className="w-5 h-5 text-slate-600" />
-          Tendencia Últimos 6 Meses
-        </h3>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold flex items-center gap-2">
+            <TrendingUp className="w-5 h-5 text-slate-600" />
+            Tendencia Últimos 6 Meses
+            {selectedMonth !== null && (
+              <span className="text-sm font-normal text-blue-600">
+                ({kpis.mesSeleccionado})
+              </span>
+            )}
+          </h3>
+          {selectedMonth !== null && (
+            <button
+              onClick={() => setSelectedMonth(null)}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
+            >
+              <X className="w-4 h-4" />
+              Limpiar filtro
+            </button>
+          )}
+        </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -252,29 +408,39 @@ export default function Dashboard({ orders = [] }) {    { label: "En proceso", v
             <tbody>
               {kpis.mesesData.map((mes, idx) => {
                 const porcentajeCobro = mes.total > 0 ? Math.round((mes.pagado / mes.total) * 100) : 0;
-                const esMesActual = idx === kpis.mesesData.length - 1;
+                const esSeleccionado = selectedMonth === idx;
                 
                 return (
                   <tr 
                     key={idx} 
-                    className={`border-b border-slate-100 hover:bg-slate-50 ${esMesActual ? 'bg-blue-50 font-medium' : ''}`}
+                    className={`border-b border-slate-100 hover:bg-slate-50 cursor-pointer ${
+                      esSeleccionado ? 'bg-blue-50 font-medium' : ''
+                    }`}
+                    onClick={() => setSelectedMonth(idx)}
                   >
                     <td className="py-3 px-4">
                       {mes.mes}
-                      {esMesActual && <span className="ml-2 text-xs bg-blue-500 text-white px-2 py-0.5 rounded">Actual</span>}
+                      {esSeleccionado && <span className="ml-2 text-xs bg-blue-500 text-white px-2 py-0.5 rounded">Filtrado</span>}
                     </td>
                     <td className="py-3 px-4 text-right">{mes.pedidos}</td>
-                    <td className="py-3 px-4 text-right font-semibold">{formatCLP(mes.total)}</td>
-                    <td className="py-3 px-4 text-right text-green-600">{formatCLP(mes.pagado)}</td>
-                    <td className="py-3 px-4 text-right text-amber-600">{formatCLP(mes.pendiente)}</td>
+                    <td className="py-3 px-4 text-right font-semibold" style={{ color: COLORS.facturacion }}>{formatCLP(mes.total)}</td>
+                    <td className="py-3 px-4 text-right" style={{ color: COLORS.cobrado }}>{formatCLP(mes.pagado)}</td>
+                    <td className="py-3 px-4 text-right" style={{ color: COLORS.deuda }}>{formatCLP(mes.pendiente)}</td>
                     <td className="py-3 px-4 text-right">
-                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                        porcentajeCobro >= 80 ? 'bg-green-100 text-green-700' :
-                        porcentajeCobro >= 50 ? 'bg-amber-100 text-amber-700' :
-                        'bg-rose-100 text-rose-700'
-                      }`}>
-                        {porcentajeCobro}%
-                      </span>
+                      {/* Barra visual de % cobro */}
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 h-2 bg-slate-200 rounded-full overflow-hidden">
+                          <div 
+                            className={`h-full ${
+                              porcentajeCobro >= 80 ? 'bg-green-500' :
+                              porcentajeCobro >= 50 ? 'bg-amber-500' :
+                              'bg-rose-500'
+                            }`}
+                            style={{ width: `${porcentajeCobro}%` }}
+                          />
+                        </div>
+                        <span className="text-xs font-medium w-10 text-right">{porcentajeCobro}%</span>
+                      </div>
                     </td>
                   </tr>
                 );
@@ -286,13 +452,13 @@ export default function Dashboard({ orders = [] }) {    { label: "En proceso", v
                 <td className="py-3 px-4 text-right">
                   {kpis.mesesData.reduce((sum, m) => sum + m.pedidos, 0)}
                 </td>
-                <td className="py-3 px-4 text-right">
+                <td className="py-3 px-4 text-right" style={{ color: COLORS.facturacion }}>
                   {formatCLP(kpis.mesesData.reduce((sum, m) => sum + m.total, 0))}
                 </td>
-                <td className="py-3 px-4 text-right text-green-600">
+                <td className="py-3 px-4 text-right" style={{ color: COLORS.cobrado }}>
                   {formatCLP(kpis.mesesData.reduce((sum, m) => sum + m.pagado, 0))}
                 </td>
-                <td className="py-3 px-4 text-right text-amber-600">
+                <td className="py-3 px-4 text-right" style={{ color: COLORS.deuda }}>
                   {formatCLP(kpis.mesesData.reduce((sum, m) => sum + m.pendiente, 0))}
                 </td>
                 <td className="py-3 px-4 text-right">
@@ -310,8 +476,9 @@ export default function Dashboard({ orders = [] }) {    { label: "En proceso", v
       <div className="rounded-lg bg-blue-50 border border-blue-200 p-4 text-sm text-blue-700">
         <p className="font-medium">📊 Información de cálculo</p>
         <p className="mt-1 text-blue-600">
-          Los montos se calculan en base a la fecha de creación del pedido. 
-          La deuda pendiente incluye todos los pedidos con saldo por cobrar del mes actual.
+          Los montos se calculan en base a la fecha de vencimiento (due_date). 
+          Haz clic en cualquier mes del gráfico o tabla para filtrar los KPIs.
+          Los pedidos atrasados son aquellos cuya fecha de vencimiento ya pasó y no están entregados.
         </p>
       </div>
     </div>
