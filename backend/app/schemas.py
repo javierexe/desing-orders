@@ -201,6 +201,7 @@ class ClienteBase(BaseModel):
     direccion: Optional[str] = None
     rut: Optional[str] = None
     tipo: Literal["particular", "empresa"] = "particular"
+    giro: Optional[str] = None  # Giro o rubro de la empresa
     preferencias: Optional[dict] = None  # JSONB field
 
 class ClienteCreate(ClienteBase):
@@ -214,6 +215,7 @@ class ClienteUpdate(BaseModel):
     direccion: Optional[str] = None
     rut: Optional[str] = None
     tipo: Optional[Literal["particular", "empresa"]] = None
+    giro: Optional[str] = None
     preferencias: Optional[dict] = None
     activo: Optional[bool] = None
 

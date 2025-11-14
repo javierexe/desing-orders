@@ -58,7 +58,8 @@ export default function ClientGrid() {
         c.nombre?.toLowerCase().includes(query) ||
         c.email?.toLowerCase().includes(query) ||
         c.telefono?.toLowerCase().includes(query) ||
-        c.rut?.toLowerCase().includes(query)
+        c.rut?.toLowerCase().includes(query) ||
+        c.giro?.toLowerCase().includes(query)
       );
     }
     
@@ -267,6 +268,21 @@ export default function ClientGrid() {
           defaultValue={getValue()}
           onBlur={(e) => handleCellBlur(row.original.id, 'nombre', e.target.value)}
           onChange={(e) => handleCellEdit(row.original.id, 'nombre', e.target.value)}
+          className="w-full px-2 py-1 border border-transparent hover:border-slate-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded"
+        />
+      ),
+      size: 200
+    },
+    {
+      accessorKey: 'giro',
+      header: 'Giro',
+      cell: ({ row, getValue }) => (
+        <input
+          type="text"
+          defaultValue={getValue() || ''}
+          onBlur={(e) => handleCellBlur(row.original.id, 'giro', e.target.value)}
+          onChange={(e) => handleCellEdit(row.original.id, 'giro', e.target.value)}
+          placeholder={row.original.tipo === 'empresa' ? 'Rubro o actividad' : ''}
           className="w-full px-2 py-1 border border-transparent hover:border-slate-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded"
         />
       ),
@@ -484,7 +500,7 @@ export default function ClientGrid() {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Nombre, email, teléfono o RUT..."
+              placeholder="Nombre, email, teléfono, RUT o giro..."
               className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
           </div>

@@ -102,6 +102,7 @@ class Cliente(Base):
     direccion = Column(Text, nullable=True)
     rut = Column(String(20), nullable=True, unique=True)
     tipo = Column(String(20), default="particular", nullable=False)  # particular|empresa
+    giro = Column(String(255), nullable=True)  # Giro o rubro de la empresa
     preferencias = Column(JSON, nullable=True)
     activo = Column(Boolean, default=True, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)

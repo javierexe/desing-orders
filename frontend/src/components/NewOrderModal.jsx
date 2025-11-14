@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import { Trash, ExternalLink, Eye, Upload, CloudUpload, Check, Clock, Tag, CheckCircle, Calculator, Clipboard, File } from "lucide-react";
 import OrderItemsEditor from "./OrderItemsEditor";
 import AmountDetection from "./AmountDetection";
+import ClientAutocomplete from "./ClientAutocomplete";
 import { buildOrderPayload, HttpError } from "../utils/http";
 import { api } from "../lib/api";
 
@@ -947,12 +948,10 @@ export default function NewOrderModal({
           
           <label className="text-sm">
             Cliente
-            <input
-              required
+            <ClientAutocomplete
               value={form.client_name}
-              onChange={(e) => setForm({ ...form, client_name: e.target.value })}
-              className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 outline-none focus:ring-2 focus:ring-sky-400"
-              placeholder="Ingrese el nombre del cliente"
+              onSelect={(cliente) => setForm({ ...form, client_name: cliente.nombre })}
+              placeholder="Buscar o crear cliente..."
             />
           </label>
 
