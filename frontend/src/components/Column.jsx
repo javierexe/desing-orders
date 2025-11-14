@@ -5,6 +5,7 @@ import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable"
 import { ChevronDown, ChevronRight } from "lucide-react";
 import SortableCard from "./SortableCard";
 import KanbanCard from "./KanbanCard";
+import { isOverdue } from "./kanbanUtils";
 
 export default function Column({ col, itemIds, getOrderById, onEdit, onDelete, debtFilter = 'all', onToggleDebtFilter }) {
   // Estado para colapsar solo la columna de entregados (auto-colapsa si hay más de 8 pedidos)
@@ -32,13 +33,31 @@ export default function Column({ col, itemIds, getOrderById, onEdit, onDelete, d
       }).length
     : 0;
 
-  // Filtrar itemIds según el filtro de deuda activo
-  const filteredItemIds = showDebtCounter && debtFilter === 'debt'
+  // Calcular pedidos con entrega atrasada (para columnas en proceso)
+  const showOverdueCounter = ["pre_pedido", "recibido", "diseno", "produccion"].includes(col.key);
+  const ordersOverdue = showOverdueCounter
     ? itemIds.filter(id => {
         const order = getOrderById(id);
-        return order && order.pending_amount > 0;
-      })
-    : itemIds;
+        return order && order.due_date && isOverdue(order.due_date);
+      }).length
+    : 0;
+
+  // Filtrar itemIds según el filtro activo
+  let filteredItemIds = itemIds;
+  
+  if (showDebtCounter && debtFilter === 'debt') {
+    // Filtro de deuda
+    filteredItemIds = itemIds.filter(id => {
+      const order = getOrderById(id);
+      return order && order.pending_amount > 0;
+    });
+  } else if (showOverdueCounter && debtFilter === 'overdue') {
+    // Filtro de atrasados
+    filteredItemIds = itemIds.filter(id => {
+      const order = getOrderById(id);
+      return order && order.due_date && isOverdue(order.due_date);
+    });
+  }
 
   // Si está colapsada, usar un estilo compacto y ancho fijo para apilar
   const collapsedStyle = isCollapsed ? "w-[260px] max-w-xs min-w-[220px]" : "";
@@ -68,11 +87,7 @@ export default function Column({ col, itemIds, getOrderById, onEdit, onDelete, d
         <div className="ml-2 mr-1 flex items-center gap-1.5">
           <button
             onClick={() => onToggleDebtFilter?.(col.key, 'all')}
-            className={`inline-flex items-center justify-center rounded-full text-sm font-semibold px-2 py-0.5 min-w-[1.5rem] transition-all ${
-              debtFilter === 'all' 
-                ? 'bg-sky-500 text-white ring-2 ring-sky-300' 
-                : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
-            }`}
+            className="inline-flex items-center justify-center rounded-full text-sm font-semibold px-2 py-0.5 min-w-[1.5rem] transition-all bg-slate-200 text-slate-700 hover:bg-slate-300"
             title={`${debtFilter === 'all' ? 'Mostrando' : 'Mostrar'} todos los pedidos (${itemIds.length})`}
           >
             {itemIds.length}
@@ -88,6 +103,19 @@ export default function Column({ col, itemIds, getOrderById, onEdit, onDelete, d
               title={`${debtFilter === 'debt' ? 'Mostrando' : 'Mostrar solo'} pedido${ordersWithDebt !== 1 ? 's' : ''} con deuda (${ordersWithDebt})`}
             >
               💰 {ordersWithDebt}
+            </button>
+          )}
+          {showOverdueCounter && ordersOverdue > 0 && (
+            <button
+              onClick={() => onToggleDebtFilter?.(col.key, 'overdue')}
+              className={`inline-flex items-center justify-center rounded-full text-xs font-bold px-2 py-0.5 min-w-[1.5rem] transition-all ${
+                debtFilter === 'overdue'
+                  ? 'bg-rose-500 text-white ring-2 ring-rose-300'
+                  : 'bg-rose-100 text-rose-800 ring-1 ring-rose-300 hover:bg-rose-200'
+              }`}
+              title={`${debtFilter === 'overdue' ? 'Mostrando' : 'Mostrar solo'} pedido${ordersOverdue !== 1 ? 's' : ''} atrasado${ordersOverdue !== 1 ? 's' : ''} (${ordersOverdue})`}
+            >
+              ⏰ {ordersOverdue}
             </button>
           )}
         </div>
