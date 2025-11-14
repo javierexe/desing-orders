@@ -313,7 +313,7 @@ export default function ClientGrid() {
           defaultValue={getValue()}
           onBlur={(e) => handleCellBlur(row.original.id, 'nombre', e.target.value)}
           onChange={(e) => handleCellEdit(row.original.id, 'nombre', e.target.value)}
-          className="w-full px-2 py-1 border border-transparent hover:border-slate-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded"
+          className="w-full px-2 py-1 text-sm border border-transparent hover:border-slate-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded"
         />
       ),
       size: 200
@@ -328,7 +328,7 @@ export default function ClientGrid() {
           onBlur={(e) => handleCellBlur(row.original.id, 'giro', e.target.value)}
           onChange={(e) => handleCellEdit(row.original.id, 'giro', e.target.value)}
           placeholder={row.original.tipo === 'empresa' ? 'Rubro o actividad' : ''}
-          className="w-full px-2 py-1 border border-transparent hover:border-slate-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded"
+          className="w-full px-2 py-1 text-sm border border-transparent hover:border-slate-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded"
         />
       ),
       size: 200
@@ -343,7 +343,7 @@ export default function ClientGrid() {
           onBlur={(e) => handleCellBlur(row.original.id, 'contacto', e.target.value)}
           onChange={(e) => handleCellEdit(row.original.id, 'contacto', e.target.value)}
           placeholder={row.original.tipo === 'empresa' ? 'Nombre contacto' : ''}
-          className="w-full px-2 py-1 border border-transparent hover:border-slate-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded"
+          className="w-full px-2 py-1 text-sm border border-transparent hover:border-slate-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded"
         />
       ),
       size: 180
@@ -358,7 +358,7 @@ export default function ClientGrid() {
           onBlur={(e) => handleCellBlur(row.original.id, 'email', e.target.value)}
           onChange={(e) => handleCellEdit(row.original.id, 'email', e.target.value)}
           placeholder="email@ejemplo.com"
-          className="w-full px-2 py-1 border border-transparent hover:border-slate-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded"
+          className="w-full px-2 py-1 text-sm border border-transparent hover:border-slate-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded"
         />
       ),
       size: 220
@@ -373,7 +373,7 @@ export default function ClientGrid() {
           onBlur={(e) => handleCellBlur(row.original.id, 'telefono', e.target.value)}
           onChange={(e) => handleCellEdit(row.original.id, 'telefono', e.target.value)}
           placeholder="+56 9 1234 5678"
-          className="w-full px-2 py-1 border border-transparent hover:border-slate-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded"
+          className="w-full px-2 py-1 text-sm border border-transparent hover:border-slate-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded"
         />
       ),
       size: 150
@@ -440,7 +440,7 @@ export default function ClientGrid() {
           onBlur={(e) => handleCellBlur(row.original.id, 'direccion', e.target.value)}
           onChange={(e) => handleCellEdit(row.original.id, 'direccion', e.target.value)}
           placeholder="Dirección completa"
-          className="w-full px-2 py-1 border border-transparent hover:border-slate-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded"
+          className="w-full px-2 py-1 text-sm border border-transparent hover:border-slate-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded"
         />
       ),
       size: 250
@@ -479,7 +479,7 @@ export default function ClientGrid() {
           className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors"
           title="Eliminar cliente"
         >
-          <Trash2 size={16} />
+          <Trash2 size={19} />
         </button>
       ),
       size: 50,

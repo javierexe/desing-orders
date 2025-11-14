@@ -751,6 +751,13 @@ export default function NewOrderModal({
 
   async function handleSubmit(e) {
     e.preventDefault();
+    
+    // Verificar si el submit fue disparado por Enter (no por click del botón)
+    if (e.nativeEvent?.submitter === null) {
+      // Submit vino de Enter, ignorarlo
+      return;
+    }
+    
     if (!isValid || (editMode && !isDirty) || loading) return;
 
     // Validación: no permitir fechas anteriores a hoy

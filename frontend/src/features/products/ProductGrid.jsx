@@ -763,7 +763,7 @@ export default function ProductGrid() {
           className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors"
           title="Eliminar producto"
         >
-          <Trash2 size={16} />
+          <Trash2 size={19} />
         </button>
       ),
       size: 50,
