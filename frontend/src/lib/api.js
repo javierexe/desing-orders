@@ -55,6 +55,9 @@ export const api = {
     
     return http(`/orders/${encodeURIComponent(code)}`, { method: "PATCH", body: JSON.stringify(patch) });
   },
+  autoSettleOrder(code) {
+    return http(`/orders/${encodeURIComponent(code)}/auto-settle`, { method: "POST" });
+  },
   deleteOrder(code) { return http(`/orders/${encodeURIComponent(code)}`, { method: "DELETE" }); },
   
   // Métodos genéricos para OCR y otros usos

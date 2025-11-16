@@ -293,6 +293,57 @@ def update_order(
     )
 
 
+@app.post("/orders/{code}/auto-settle", response_model=schemas.OrderOut)
+def auto_settle_order(code: str, db: Session = Depends(get_db)):
+    """
+    Auto-liquida la deuda pendiente de un pedido al momento de entregarlo.
+    Actualiza todos los items para que paid_amount = price.
+    """
+    logger.info(f"[POST /orders/{code}/auto-settle] Auto-liquidando deuda pendiente")
+    
+    order = db.query(models.Order).filter(models.Order.code == code).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Pedido no encontrado")
+    
+    # Actualizar cada item para liquidar la deuda
+    for item in order.items:
+        if item.paid_amount < item.price:
+            logger.info(f"   Item '{item.description}': ${item.paid_amount} → ${item.price}")
+            item.paid_amount = item.price
+    
+    db.commit()
+    db.refresh(order)
+    
+    logger.info(f"[POST /orders/{code}/auto-settle] Deuda liquidada exitosamente")
+    
+    # Calcular totales y construir response
+    totals = calculate_order_totals(order)
+    receipts = [schemas.OrderReceiptOut(id=r.id, url=r.url, filename=r.filename, uploaded_at=r.uploaded_at) for r in getattr(order, "receipts", [])]
+    
+    return schemas.OrderOut(
+        id=order.id,
+        code=order.code,
+        client_name=order.client_name,
+        title=order.title,
+        description=order.description,
+        status=order.status,
+        delivery_method=order.delivery_method,
+        due_date=order.due_date,
+        delivered_date=order.delivered_date,
+        abono_image_url=order.abono_image_url,
+        items=[schemas.OrderItemOut(
+            id=item.id,
+            description=item.description,
+            quantity=item.quantity,
+            due_date=item.due_date,
+            price=item.price,
+            paid_amount=item.paid_amount
+        ) for item in order.items],
+        receipts=receipts,
+        **totals
+    )
+
+
 @app.delete("/orders/{code}", status_code=204)
 def delete_order(code: str, db: Session = Depends(get_db)):
     order = db.query(models.Order).filter(models.Order.code == code).first()
