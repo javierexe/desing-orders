@@ -1,6 +1,6 @@
 // frontend/src/pages/Dashboard.jsx
 import React, { useMemo, useState } from "react";
-import { TrendingUp, DollarSign, CreditCard, AlertCircle, Calendar, Users, Package, X } from "lucide-react";
+import { TrendingUp, DollarSign, CreditCard, AlertCircle, Calendar, Users, Package, X, ChevronRight, ChevronDown } from "lucide-react";
 import { ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 // Paleta de colores consistente
@@ -238,6 +238,42 @@ export default function Dashboard({ orders = [] }) {
         </div>
       </div>
 
+      {/* Filtro de Meses - Pills */}
+      {kpis.mesesData.length > 0 && (
+        <div className="bg-white rounded-xl border border-slate-200 p-4">
+          <div className="flex items-center gap-3 mb-3">
+            <Calendar className="w-5 h-5 text-slate-600" />
+            <h3 className="text-sm font-semibold text-slate-700">Filtrar por período</h3>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => setSelectedMonth(null)}
+              className={`px-4 py-2 rounded-lg font-medium text-sm transition-all ${
+                selectedMonth === null
+                  ? 'bg-slate-700 text-white shadow-md'
+                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+              }`}
+            >
+              📊 Todo el período
+            </button>
+            {kpis.mesesData.map((mes, idx) => (
+              <button
+                key={idx}
+                onClick={() => setSelectedMonth(idx)}
+                className={`px-4 py-2 rounded-lg font-medium text-sm transition-all capitalize ${
+                  selectedMonth === idx
+                    ? 'bg-blue-600 text-white shadow-md'
+                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                }`}
+              >
+                📅 {mes.mes}
+                <span className="ml-2 text-xs opacity-75">({mes.pedidos})</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* KPI Cards */}
       <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
         {cards.map((card, idx) => {
@@ -413,16 +449,37 @@ export default function Dashboard({ orders = [] }) {
                 return (
                   <tr 
                     key={idx} 
-                    className={`border-b border-slate-100 hover:bg-slate-50 cursor-pointer ${
-                      esSeleccionado ? 'bg-blue-50 font-medium' : ''
-                    }`}
+                    className={`border-b border-slate-100 transition-all group ${
+                      esSeleccionado 
+                        ? 'bg-blue-50 border-l-4 border-l-blue-500' 
+                        : idx % 2 === 0 
+                          ? 'hover:bg-slate-50' 
+                          : 'bg-slate-50/50 hover:bg-slate-100'
+                    } cursor-pointer`}
                     onClick={() => setSelectedMonth(idx)}
                   >
                     <td className="py-3 px-4">
-                      {mes.mes}
-                      {esSeleccionado && <span className="ml-2 text-xs bg-blue-500 text-white px-2 py-0.5 rounded">Filtrado</span>}
+                      <div className="flex items-center gap-2">
+                        {esSeleccionado ? (
+                          <ChevronDown className="w-4 h-4 text-blue-600" />
+                        ) : (
+                          <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-slate-600 transition-colors" />
+                        )}
+                        <span className={`capitalize ${esSeleccionado ? 'font-semibold text-blue-700' : ''}`}>
+                          {mes.mes}
+                        </span>
+                        {esSeleccionado && (
+                          <span className="ml-2 text-xs bg-blue-500 text-white px-2 py-0.5 rounded-full">
+                            Activo
+                          </span>
+                        )}
+                      </div>
                     </td>
-                    <td className="py-3 px-4 text-right">{mes.pedidos}</td>
+                    <td className="py-3 px-4 text-right">
+                      <span className="inline-flex items-center justify-center min-w-[2rem] px-2 py-1 rounded-full bg-slate-200 text-slate-700 text-xs font-medium">
+                        {mes.pedidos}
+                      </span>
+                    </td>
                     <td className="py-3 px-4 text-right font-semibold" style={{ color: COLORS.facturacion }}>{formatCLP(mes.total)}</td>
                     <td className="py-3 px-4 text-right" style={{ color: COLORS.cobrado }}>{formatCLP(mes.pagado)}</td>
                     <td className="py-3 px-4 text-right" style={{ color: COLORS.deuda }}>{formatCLP(mes.pendiente)}</td>
