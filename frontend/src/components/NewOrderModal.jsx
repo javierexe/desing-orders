@@ -172,6 +172,7 @@ export default function NewOrderModal({
       initialFormRef.current = next;
       setItems(order.items ?? []);
     } else {
+      // Modo creación: iniciar con valores en blanco
       const blank = {
         client_name: "",
         title: "",
@@ -184,7 +185,14 @@ export default function NewOrderModal({
       };
       setForm(blank);
       initialFormRef.current = blank;
-      setItems([]);
+      // Iniciar con un ítem vacío por defecto
+      setItems([{
+        description: "",
+        quantity: 1,
+        due_date: "",
+        price: 0,
+        paid_amount: 0
+      }]);
     }
     
     // Limpiar estados de detección al abrir modal
