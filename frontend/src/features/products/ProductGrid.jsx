@@ -3,6 +3,7 @@ import { useReactTable, getCoreRowModel, getSortedRowModel, flexRender } from '@
 import { toast, Toaster } from 'sonner';
 import { Trash2, Package, Tag, Palette, Shirt, Gift, BookOpen, Box, Sparkles, Heart, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { useConfirmDialog } from '../../components/ConfirmDialog';
+import LogoSpinner from '../../components/LogoSpinner';
 
 export default function ProductGrid() {
   const { showConfirm } = useConfirmDialog();
@@ -11,6 +12,7 @@ export default function ProductGrid() {
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedRows, setSelectedRows] = useState(new Set());
+  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [importModal, setImportModal] = useState({ open: false, data: null, stats: null });
   const [sorting, setSorting] = useState([]);
@@ -52,6 +54,7 @@ export default function ProductGrid() {
   }, []);
 
   async function fetchProducts(categoryId = null, search = null) {
+    setLoading(true);
     try {
       let url = '/api/productos?activo=true';
       if (categoryId) url += `&categoria_id=${categoryId}`;
@@ -62,6 +65,8 @@ export default function ProductGrid() {
       setData(Array.isArray(products) ? products : []);
     } catch (err) {
       toast.error('Error cargando productos');
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -785,9 +790,14 @@ export default function ProductGrid() {
     <div className="h-[calc(100vh-12rem)] flex flex-col bg-white rounded-2xl shadow-sm border border-slate-200">
       <Toaster position="top-right" richColors />
       
-      {/* Header con filtros de categoría */}
-      <div className="p-4 border-b border-slate-200 space-y-5">
-        {/* Filtros de categoría como pills */}
+      {loading ? (
+        <div className="flex-1 flex items-center justify-center">
+          <LogoSpinner />
+        </div>
+      ) : (
+        <>
+          {/* Header con filtros de categoría */}
+          <div className="p-4 border-b border-slate-200 space-y-5">{/* Filtros de categoría como pills */}
         
 
         {/* Toolbar */}
@@ -993,26 +1003,38 @@ export default function ProductGrid() {
             ))}
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {table.getRowModel().rows.map(row => (
-              <tr 
-                key={row.id}
-                className={`transition-all duration-500 ${
-                  highlightedProductId === row.original.id
-                    ? 'bg-orange-100 ring-2 ring-orange-400 ring-inset animate-pulse'
-                    : 'hover:bg-sky-50'
-                }`}
-              >
-                {row.getVisibleCells().map(cell => (
-                  <td 
-                    key={cell.id}
-                    className="px-3 py-1 align-middle"
-                    style={{ width: cell.column.getSize() }}
-                  >
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                  </td>
-                ))}
+            {loading ? (
+              <tr>
+                <td colSpan={100} className="h-96">
+                  <div className="flex items-center justify-center h-full">
+                    <LogoSpinner />
+                  </div>
+                </td>
               </tr>
-            ))}
+            ) : (
+              <>
+                {table.getRowModel().rows.map(row => (
+                  <tr 
+                    key={row.id}
+                    className={`transition-all duration-500 ${
+                      highlightedProductId === row.original.id
+                        ? 'bg-orange-100 ring-2 ring-orange-400 ring-inset animate-pulse'
+                        : 'hover:bg-sky-50'
+                    }`}
+                  >
+                    {row.getVisibleCells().map(cell => (
+                      <td 
+                        key={cell.id}
+                        className="px-3 py-1 align-middle"
+                        style={{ width: cell.column.getSize() }}
+                      >
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </>
+            )}
           </tbody>
         </table>
         
@@ -1155,6 +1177,8 @@ export default function ProductGrid() {
             </div>
           </div>
         </div>
+      )}
+        </>
       )}
     </div>
   );

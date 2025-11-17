@@ -3,11 +3,13 @@ import { useReactTable, getCoreRowModel, getSortedRowModel, flexRender } from '@
 import { toast, Toaster } from 'sonner';
 import { Trash2, User, Building2, Users, Plus, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { useConfirmDialog } from '../../components/ConfirmDialog';
+import LogoSpinner from '../../components/LogoSpinner';
 
 export default function ClientGrid() {
   const { showConfirm } = useConfirmDialog();
   const [data, setData] = useState([]);
   const [selectedRows, setSelectedRows] = useState(new Set());
+  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [sorting, setSorting] = useState([]);
   const [highlightedClientId, setHighlightedClientId] = useState(null);
@@ -27,12 +29,15 @@ export default function ClientGrid() {
   }, []);
 
   async function fetchClients() {
+    setLoading(true);
     try {
       const res = await fetch('/api/clientes?activo=true');
       const clients = await res.json();
       setData(Array.isArray(clients) ? clients : []);
     } catch (err) {
       toast.error('Error cargando clientes');
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -507,22 +512,22 @@ export default function ClientGrid() {
             <h1 className="text-2xl font-bold text-slate-800">Clientes</h1>
             <p className="text-sm text-slate-500">{data.length} cliente(s) total</p>
           </div>
-        </div>
-        
-        <div className="flex items-center gap-2">
-          {saving && (
-            <span className="text-sm text-amber-600 animate-pulse">
-              Guardando cambios...
-            </span>
-          )}
-          <button
-            onClick={handleCreateNew}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            Nuevo Cliente
-          </button>
-          <button
+            </div>
+            
+            <div className="flex items-center gap-2">
+              {saving && (
+                <span className="text-sm text-amber-600 animate-pulse">
+                  Guardando cambios...
+                </span>
+              )}
+              <button
+                onClick={handleCreateNew}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+                Nuevo Cliente
+              </button>
+              <button
             onClick={handleDelete}
             disabled={selectedRows.size === 0}
             className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:bg-slate-300 disabled:cursor-not-allowed transition-colors"
@@ -670,22 +675,34 @@ export default function ClientGrid() {
               ))}
             </thead>
             <tbody className="divide-y divide-slate-200">
-              {table.getRowModel().rows.map(row => (
-                <tr
-                  key={row.id}
-                  className={`hover:bg-slate-50 transition-colors ${
-                    highlightedClientId === row.original.id
-                      ? 'bg-orange-100 ring-2 ring-orange-400 animate-pulse'
-                      : ''
-                  }`}
-                >
-                  {row.getVisibleCells().map(cell => (
-                    <td key={cell.id} className="px-4 py-2">
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </td>
-                  ))}
+              {loading ? (
+                <tr>
+                  <td colSpan={100} className="h-96">
+                    <div className="flex items-center justify-center h-full">
+                      <LogoSpinner />
+                    </div>
+                  </td>
                 </tr>
-              ))}
+              ) : (
+                <>
+                  {table.getRowModel().rows.map(row => (
+                    <tr
+                      key={row.id}
+                      className={`hover:bg-slate-50 transition-colors ${
+                        highlightedClientId === row.original.id
+                          ? 'bg-orange-100 ring-2 ring-orange-400 animate-pulse'
+                          : ''
+                      }`}
+                    >
+                      {row.getVisibleCells().map(cell => (
+                        <td key={cell.id} className="px-4 py-2">
+                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </>
+              )}
             </tbody>
           </table>
           
