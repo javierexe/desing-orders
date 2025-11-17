@@ -2,6 +2,7 @@
 import React, { useMemo, useState } from "react";
 import { TrendingUp, DollarSign, CreditCard, AlertCircle, Calendar, Users, Package, X, ChevronRight, ChevronDown } from "lucide-react";
 import { ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import MonthDetailModal from '../components/MonthDetailModal';
 
 // Paleta de colores consistente
 const COLORS = {
@@ -13,6 +14,8 @@ const COLORS = {
 
 export default function Dashboard({ orders = [] }) {
   const [selectedMonth, setSelectedMonth] = useState(null); // null = mes actual, número = índice del mes
+  const [modalMonthData, setModalMonthData] = useState(null); // Datos del mes para el modal
+  const [isModalOpen, setIsModalOpen] = useState(false);
   
   const formatCLP = (amount) => {
     return new Intl.NumberFormat('es-CL', {
@@ -259,8 +262,11 @@ export default function Dashboard({ orders = [] }) {
             {kpis.mesesData.map((mes, idx) => (
               <button
                 key={idx}
-                onClick={() => setSelectedMonth(idx)}
-                className={`px-4 py-2 rounded-lg font-medium text-sm transition-all capitalize ${
+                onClick={() => {
+                  setModalMonthData(mes);
+                  setIsModalOpen(true);
+                }}
+                className={`px-4 py-2 rounded-lg font-medium text-sm transition-all capitalize group ${
                   selectedMonth === idx
                     ? 'bg-blue-600 text-white shadow-md'
                     : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
@@ -268,6 +274,7 @@ export default function Dashboard({ orders = [] }) {
               >
                 📅 {mes.mes}
                 <span className="ml-2 text-xs opacity-75">({mes.pedidos})</span>
+                <ChevronRight className="w-4 h-4 inline-block ml-1 opacity-50 group-hover:opacity-100 transition-opacity" />
               </button>
             ))}
           </div>
@@ -456,7 +463,10 @@ export default function Dashboard({ orders = [] }) {
                           ? 'hover:bg-slate-50' 
                           : 'bg-slate-50/50 hover:bg-slate-100'
                     } cursor-pointer`}
-                    onClick={() => setSelectedMonth(idx)}
+                    onClick={() => {
+                      setModalMonthData(mes);
+                      setIsModalOpen(true);
+                    }}
                   >
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-2">
@@ -534,10 +544,18 @@ export default function Dashboard({ orders = [] }) {
         <p className="font-medium">📊 Información de cálculo</p>
         <p className="mt-1 text-blue-600">
           Los montos se calculan en base a la fecha de vencimiento (due_date). 
-          Haz clic en cualquier mes del gráfico o tabla para filtrar los KPIs.
+          Haz clic en cualquier mes para ver el <strong>detalle día por día</strong> con gráfica de evolución y lista de pedidos.
           Los pedidos atrasados son aquellos cuya fecha de vencimiento ya pasó y no están entregados.
         </p>
       </div>
+
+      {/* Modal de detalle mensual */}
+      <MonthDetailModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        monthData={modalMonthData}
+        orders={orders}
+      />
     </div>
   );
 }
