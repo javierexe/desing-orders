@@ -296,7 +296,18 @@ export default function NewOrderModal({
           console.error('Error deleting receipt', await res.text());
         } else {
           onNotify?.('Comprobante eliminado', 'success');
-          onUpdated?.();
+          // Recargar el pedido para obtener estado actualizado
+          if (editMode && order?.code) {
+            try {
+              const updated = await api.getOrder(order.code);
+              onUpdated?.(updated);
+            } catch (err) {
+              console.error('Error refrescando pedido:', err);
+              onUpdated?.();
+            }
+          } else {
+            onUpdated?.();
+          }
         }
       } catch (err) {
         console.error(err);
@@ -317,10 +328,10 @@ export default function NewOrderModal({
           if (!list || list.length === 0) {
             // Limpiar abono_image_url en el pedido (en backend se normaliza "" a None)
             try {
-              await api.updateOrder(order.code, { abono_image_url: "" });
+              const updated = await api.updateOrder(order.code, { abono_image_url: "" });
               // opcional: notificar y refrescar
               onNotify?.('Comprobante principal limpiado', 'info');
-              onUpdated?.();
+              onUpdated?.(updated);
             } catch (err) {
               console.error('Error clearing legacy abono_image_url', err);
             }

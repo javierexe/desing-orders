@@ -47,6 +47,23 @@ function AppInner() {
     }
   }
 
+  // Callback para cuando se actualiza un pedido desde el modal
+  function handleOrderUpdated(updatedOrder) {
+    // Actualizar la lista de pedidos
+    setOrders(prev => prev.map(o => 
+      o.code === updatedOrder.code ? { ...o, ...updatedOrder } : o
+    ));
+    
+    // Mostrar toast si el status cambió automáticamente
+    if (updatedOrder.auto_status_changed) {
+      const totalPaidFormatted = parseInt(updatedOrder.total_paid || 0).toLocaleString('es-CL', {
+        style: 'currency',
+        currency: 'CLP'
+      });
+      showToast(`✅ Pedido ${updatedOrder.code} movido automáticamente a "Recibido" (abono: ${totalPaidFormatted})`, "success");
+    }
+  }
+
   async function handleChangeStatus(code, status) {
     try {
       const updateResult = await api.updateOrder(code, { status });
@@ -55,6 +72,15 @@ function AppInner() {
       setOrders(prev => prev.map(o => 
         o.code === code ? { ...o, ...updateResult } : o
       ));
+      
+      // Mostrar toast si el status cambió automáticamente de pre-pedido a recibido
+      if (updateResult.auto_status_changed) {
+        const totalPaidFormatted = parseInt(updateResult.total_paid || 0).toLocaleString('es-CL', {
+          style: 'currency',
+          currency: 'CLP'
+        });
+        showToast(`✅ Pedido ${code} movido automáticamente a "Recibido" (abono: ${totalPaidFormatted})`, "success");
+      }
     } catch (err) {
       console.error("❌ Error en handleChangeStatus:", err);
       // En caso de error, recargar todo
@@ -169,7 +195,7 @@ function AppInner() {
                   order={orderToEdit}
                   editMode={true}
                   onClose={() => { setShowEdit(false); setOrderToEdit(null); }}
-                  onUpdated={fetchOrders}
+                  onUpdated={handleOrderUpdated}
                   onNotify={showToast}
                 />
               )}

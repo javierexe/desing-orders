@@ -266,8 +266,22 @@ def update_order(
 
     db.refresh(order)
     
-    # Calcular totales y construir response manualmente
+    # Calcular totales
     totals = calculate_order_totals(order)
+    
+    # Lógica automática: si está en pre-pedido y tiene al menos 50% del total pagado, cambiar a recibido
+    auto_status_changed = False
+    total_price = totals.get("total_price", 0)
+    total_paid = totals.get("total_paid", 0)
+    
+    if order.status == "pre-pedido" and total_price > 0 and total_paid >= (total_price * 0.5):
+        logger.info(f"[PATCH /orders/{code}] Auto-cambiando status de 'pre-pedido' a 'recibido' (total_paid={total_paid} >= 50% de {total_price})")
+        order.status = "recibido"
+        auto_status_changed = True
+        db.commit()
+        db.refresh(order)
+    
+    # Construir response manualmente
     receipts = [schemas.OrderReceiptOut(id=r.id, url=r.url, filename=r.filename, uploaded_at=r.uploaded_at) for r in getattr(order, "receipts", [])]
     return schemas.OrderOut(
         id=order.id,
@@ -289,6 +303,7 @@ def update_order(
             paid_amount=item.paid_amount
         ) for item in order.items],
         receipts=receipts,
+        auto_status_changed=auto_status_changed,
         **totals
     )
 

@@ -90,6 +90,7 @@ class OrderOut(OrderBase):
     total_price: Optional[int] = None  # Suma de precios de todos los items en pesos chilenos
     total_paid: Optional[int] = None   # Suma de abonos de todos los items en pesos chilenos
     pending_amount: Optional[int] = None  # Diferencia entre total_price y total_paid en pesos chilenos
+    auto_status_changed: Optional[bool] = None  # Indica si el status cambió automáticamente
 
     # Pydantic v2: usa model_config en lugar de Config
     model_config = ConfigDict(from_attributes=True)
