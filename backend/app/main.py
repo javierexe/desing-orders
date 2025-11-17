@@ -269,13 +269,12 @@ def update_order(
     # Calcular totales
     totals = calculate_order_totals(order)
     
-    # Lógica automática: si está en pre-pedido y tiene al menos 50% del total pagado, cambiar a recibido
+    # Lógica automática: si está en pre-pedido y tiene cualquier abono, cambiar a recibido
     auto_status_changed = False
-    total_price = totals.get("total_price", 0)
     total_paid = totals.get("total_paid", 0)
     
-    if order.status == "pre-pedido" and total_price > 0 and total_paid >= (total_price * 0.5):
-        logger.info(f"[PATCH /orders/{code}] Auto-cambiando status de 'pre-pedido' a 'recibido' (total_paid={total_paid} >= 50% de {total_price})")
+    if order.status == "pre-pedido" and total_paid > 0:
+        logger.info(f"[PATCH /orders/{code}] Auto-cambiando status de 'pre-pedido' a 'recibido' (total_paid={total_paid})")
         order.status = "recibido"
         auto_status_changed = True
         db.commit()

@@ -77,64 +77,15 @@ export function useKanbanDnD(columns, setColumns, getOrderById, onChangeStatus, 
       const moved = getOrderById(aId);
       
       if (moved && onChangeStatus) {
-        // Verificar si se está moviendo de pre-pedido a recibido
-        if (from === 'pre_pedido' && to === 'recibido') {
-          handlePrePedidoToRecibido(moved, to);
-        }
         // Verificar si se está moviendo a "entregado"
-        else if (to === 'entregado') {
+        if (to === 'entregado') {
           handleDeliveryConfirmation(moved, to);
         } else {
-          // Para todos los demás movimientos
+          // Para todos los demás movimientos, incluido pre_pedido → recibido
           onChangeStatus(moved.code, backendStatus[to] || to);
         }
       }
     }
-  }
-
-  // Función para validar movimiento manual de pre-pedido a recibido
-  async function handlePrePedidoToRecibido(order, targetStatus) {
-    const totalPrice = order.total_price || 0;
-    const totalPaid = order.total_paid || 0;
-    const minimumRequired = totalPrice * 0.5;
-    
-    if (totalPrice === 0) {
-      // Si no tiene precio, no permitir el movimiento
-      await showConfirm({
-        title: 'Precio requerido',
-        message: `El pedido "${order.code}" no tiene un precio definido.\n\nPara mover a "Recibido" debe tener precio y al menos 50% de abono.`,
-        confirmText: 'Entendido',
-        type: 'warning'
-      });
-      revertColumns(order.code);
-      return;
-    }
-    
-    if (totalPaid < minimumRequired) {
-      // No tiene el 50% requerido
-      const formattedPaid = parseInt(totalPaid).toLocaleString('es-CL', { 
-        style: 'currency', 
-        currency: 'CLP' 
-      });
-      const formattedRequired = parseInt(minimumRequired).toLocaleString('es-CL', { 
-        style: 'currency', 
-        currency: 'CLP' 
-      });
-      
-      await showConfirm({
-        title: 'Abono insuficiente',
-        message: `El pedido "${order.code}" necesita al menos el 50% del total como abono.\n\nAbono actual: ${formattedPaid}\nMínimo requerido: ${formattedRequired}`,
-        confirmText: 'Entendido',
-        type: 'warning'
-      });
-      
-      // Revertir el movimiento
-      revertColumns(order.code);
-      return;
-    }
-    
-    // Si cumple con el 50%, mover directamente
-    onChangeStatus(order.code, backendStatus[targetStatus] || targetStatus);
   }
 
   // Función para manejar la confirmación de entrega
