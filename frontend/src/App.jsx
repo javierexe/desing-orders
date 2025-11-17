@@ -10,6 +10,7 @@ import ProductAdmin from "./pages/ProductAdmin.jsx";
 import ClientAdmin from "./pages/ClientAdmin.jsx";
 import { ConfirmDialogProvider } from "./components/ConfirmDialog.jsx";
 import { api } from "./lib/api.js";
+import { startKeepalive, stopKeepalive } from "./utils/keepalive.js";
 
 // Normalizador para filtro
 function normalize(s = "") {
@@ -27,6 +28,12 @@ function AppInner() {
   const [query, setQuery] = useState("");
   const [orderToEdit, setOrderToEdit] = useState(null);
   const [toast, setToast] = useState(null);
+
+  // KEEPALIVE: Mantener backend de Render despierto
+  useEffect(() => {
+    startKeepalive();
+    return () => stopKeepalive();
+  }, []);
 
   // DATA
   useEffect(() => { fetchOrders(); }, []);
