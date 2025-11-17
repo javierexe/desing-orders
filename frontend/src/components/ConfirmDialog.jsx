@@ -32,7 +32,11 @@ export function ConfirmDialogProvider({ children }) {
           onCancel: () => {
             setDialog(null);
             resolve(false);
-          }
+          },
+          onNeutral: options.neutralText ? () => {
+            setDialog(null);
+            resolve(null);
+          } : null
         });
       });
     };
@@ -119,12 +123,22 @@ export function ConfirmDialogProvider({ children }) {
           {/* Footer */}
           <div className="flex items-center justify-end gap-3 p-6 bg-slate-50 rounded-b-lg">
             {!dialog.isAlert && (
-              <button
-                onClick={dialog.onCancel}
-                className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-500 transition-colors"
-              >
-                Cancelar
-              </button>
+              <>
+                <button
+                  onClick={dialog.onCancel}
+                  className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-500 transition-colors"
+                >
+                  {dialog.cancelText || 'Cancelar'}
+                </button>
+                {dialog.neutralText && dialog.onNeutral && (
+                  <button
+                    onClick={dialog.onNeutral}
+                    className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-500 transition-colors"
+                  >
+                    {dialog.neutralText}
+                  </button>
+                )}
+              </>
             )}
             <button
               onClick={dialog.onConfirm}

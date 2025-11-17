@@ -98,98 +98,82 @@ export function useKanbanDnD(columns, setColumns, getOrderById, onChangeStatus, 
       currency: 'CLP' 
     });
     
-    let message = '';
-    let confirmText = '';
-    let type = 'info';
-    
     if (hasPendingDebt) {
-      message = `El pedido "${order.code}" tiene un saldo pendiente de ${formattedPending}.\n\n¿Está completamente pagado ahora?\n\n(El sistema registrará automáticamente el pago final)`;
-      confirmText = 'Sí, está pagado';
-      type = 'warning';
-    } else {
-      message = `¿Confirmas que el pedido "${order.code}" será entregado?`;
-      confirmText = 'Sí, entregar';
-      type = 'info';
-    }
-    
-    const confirmed = await showConfirm({
-      title: hasPendingDebt ? 'Confirmación de pago' : 'Confirmar entrega',
-      message: message,
-      confirmText: confirmText,
-      type: type
-    });
-    
-    if (confirmed) {
-      try {
-        // Si hay deuda pendiente, auto-liquidarla primero
-        if (hasPendingDebt) {
+      // Si tiene deuda pendiente, mostrar diálogo con 3 opciones
+      const result = await showConfirm({
+        title: 'Confirmación de entrega',
+        message: `El pedido "${order.code}" tiene un saldo pendiente de ${formattedPending}.\n\n¿Cómo deseas proceder?`,
+        confirmText: 'Sí, pagó todo',
+        neutralText: 'Entregar con deuda',
+        cancelText: 'No mover pedido',
+        type: 'warning'
+      });
+      
+      if (result === true) {
+        // Auto-liquidar la deuda
+        try {
           console.log(`💰 Auto-liquidando deuda de ${formattedPending} para pedido ${order.code}`);
           await api.autoSettleOrder(order.code);
           console.log(`✅ Deuda auto-liquidada exitosamente`);
+          // Mover a entregado después de liquidar
+          onChangeStatus(order.code, backendStatus[targetStatus] || targetStatus);
+        } catch (error) {
+          console.error('❌ Error al auto-liquidar deuda:', error);
+          alert(`Error al procesar el pago: ${error.message || 'Error desconocido'}`);
+          revertColumns(order.code);
         }
-        
-        // Luego cambiar el estado a entregado
+      } else if (result === null) {
+        // Entregar con deuda pendiente (botón neutral)
         onChangeStatus(order.code, backendStatus[targetStatus] || targetStatus);
-      } catch (error) {
-        console.error('❌ Error al auto-liquidar deuda:', error);
-        
-        // Mostrar error al usuario
-        alert(`Error al procesar el pago: ${error.message || 'Error desconocido'}`);
-        
-        // Revertir el drag visual
-        setColumns(prevColumns => {
-          const revertedColumns = JSON.parse(JSON.stringify(prevColumns));
-          const currentContainer = findContainerOf(order.code, revertedColumns);
-          
-          if (currentContainer) {
-            revertedColumns[currentContainer] = revertedColumns[currentContainer].filter(
-              id => id !== order.code
-            );
-          }
-          
-          const originalContainer = originalColumns ? 
-            findContainerOf(order.code, originalColumns) : null;
-          
-          if (originalContainer && revertedColumns[originalContainer]) {
-            const originalIndex = originalColumns[originalContainer].indexOf(order.code);
-            revertedColumns[originalContainer].splice(
-              originalIndex >= 0 ? originalIndex : revertedColumns[originalContainer].length,
-              0,
-              order.code
-            );
-          }
-          
-          return revertedColumns;
-        });
+      } else {
+        // Cancelar (result === false)
+        revertColumns(order.code);
       }
+      
     } else {
-      // Revertir el drag visual si el usuario cancela
-      setColumns(prevColumns => {
-        const revertedColumns = JSON.parse(JSON.stringify(prevColumns));
-        const currentContainer = findContainerOf(order.code, revertedColumns);
-        
-        if (currentContainer) {
-          revertedColumns[currentContainer] = revertedColumns[currentContainer].filter(
-            id => id !== order.code
-          );
-        }
-        
-        // Buscar en originalColumns para restaurar posición
-        const originalContainer = originalColumns ? 
-          findContainerOf(order.code, originalColumns) : null;
-        
-        if (originalContainer && revertedColumns[originalContainer]) {
-          const originalIndex = originalColumns[originalContainer].indexOf(order.code);
-          revertedColumns[originalContainer].splice(
-            originalIndex >= 0 ? originalIndex : revertedColumns[originalContainer].length,
-            0,
-            order.code
-          );
-        }
-        
-        return revertedColumns;
+      // Si no tiene deuda, solo confirmar la entrega
+      const confirmed = await showConfirm({
+        title: 'Confirmar entrega',
+        message: `¿Confirmas que el pedido "${order.code}" será entregado?`,
+        confirmText: 'Sí, entregar',
+        type: 'info'
       });
+      
+      if (confirmed) {
+        onChangeStatus(order.code, backendStatus[targetStatus] || targetStatus);
+      } else {
+        // Revertir el drag visual si cancela
+        revertColumns(order.code);
+      }
     }
+  }
+  
+  // Función auxiliar para revertir columnas
+  function revertColumns(orderCode) {
+    setColumns(prevColumns => {
+      const revertedColumns = JSON.parse(JSON.stringify(prevColumns));
+      const currentContainer = findContainerOf(orderCode, revertedColumns);
+      
+      if (currentContainer) {
+        revertedColumns[currentContainer] = revertedColumns[currentContainer].filter(
+          id => id !== orderCode
+        );
+      }
+      
+      const originalContainer = originalColumns ? 
+        findContainerOf(orderCode, originalColumns) : null;
+      
+      if (originalContainer && revertedColumns[originalContainer]) {
+        const originalIndex = originalColumns[originalContainer].indexOf(orderCode);
+        revertedColumns[originalContainer].splice(
+          originalIndex >= 0 ? originalIndex : revertedColumns[originalContainer].length,
+          0,
+          orderCode
+        );
+      }
+      
+      return revertedColumns;
+    });
   }
 
   return {
