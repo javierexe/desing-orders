@@ -790,14 +790,8 @@ export default function ProductGrid() {
     <div className="h-[calc(100vh-12rem)] flex flex-col bg-white rounded-2xl shadow-sm border border-slate-200">
       <Toaster position="top-right" richColors />
       
-      {loading ? (
-        <div className="flex-1 flex items-center justify-center">
-          <LogoSpinner />
-        </div>
-      ) : (
-        <>
-          {/* Header con filtros de categoría */}
-          <div className="p-4 border-b border-slate-200 space-y-5">{/* Filtros de categoría como pills */}
+      {/* Header con filtros de categoría */}
+      <div className="p-4 border-b border-slate-200 space-y-5">{/* Filtros de categoría como pills */}
         
 
         {/* Toolbar */}
@@ -1177,8 +1171,6 @@ export default function ProductGrid() {
             </div>
           </div>
         </div>
-      )}
-        </>
       )}
     </div>
   );
