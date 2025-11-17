@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { Search, Plus, User, Building2, AlertCircle } from "lucide-react";
 import { api } from "../lib/api";
 import { useConfirmDialog } from "./ConfirmDialog";
@@ -161,7 +162,13 @@ export default function ClientAutocomplete({ onSelect, value, placeholder = "Bus
 
   async function handleSaveQuickClient(formData) {
     try {
-      const res = await api.post('/clientes', formData);
+      // Agregar campo activo requerido por el backend
+      const payload = {
+        ...formData,
+        activo: true
+      };
+      
+      const res = await api.post('/clientes', payload);
       
       // Actualizar cache y lista local
       const nuevoCliente = res;
@@ -172,11 +179,18 @@ export default function ClientAutocomplete({ onSelect, value, placeholder = "Bus
       // Seleccionar automáticamente
       handleClientSelect(nuevoCliente);
       setShowQuickCreate(false);
+      
+      // Mensaje de éxito
+      showAlert({
+        title: "Cliente creado",
+        message: `El cliente "${nuevoCliente.nombre}" fue creado exitosamente.`,
+        type: "success"
+      });
     } catch (error) {
       console.error("Error creando cliente:", error);
       showAlert({
         title: "Error al crear cliente",
-        message: "Por favor intenta nuevamente.",
+        message: error.message || "Por favor intenta nuevamente.",
         type: "warning"
       });
     }
@@ -309,13 +323,14 @@ export default function ClientAutocomplete({ onSelect, value, placeholder = "Bus
       )}
 
       {/* Modal de creación rápida */}
-      {showQuickCreate && (
+      {showQuickCreate && createPortal(
         <QuickCreateClientModal
           initialName={inputValue.trim()}
           onSave={handleSaveQuickClient}
           onCancel={() => setShowQuickCreate(false)}
           showAlert={showAlert}
-        />
+        />,
+        document.body
       )}
     </div>
   );
@@ -323,6 +338,7 @@ export default function ClientAutocomplete({ onSelect, value, placeholder = "Bus
 
 // Modal para crear cliente rápidamente
 function QuickCreateClientModal({ initialName, onSave, onCancel, showAlert }) {
+  const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState({
     nombre: initialName || '',
     tipo: 'particular',
@@ -334,7 +350,7 @@ function QuickCreateClientModal({ initialName, onSave, onCancel, showAlert }) {
     direccion: ''
   });
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     if (e) {
       e.preventDefault();
       e.stopPropagation();
@@ -350,7 +366,13 @@ function QuickCreateClientModal({ initialName, onSave, onCancel, showAlert }) {
       return;
     }
 
-    onSave(formData);
+    // Llamar a onSave que es async
+    setSaving(true);
+    try {
+      await onSave(formData);
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -507,15 +529,24 @@ function QuickCreateClientModal({ initialName, onSave, onCancel, showAlert }) {
             <button
               type="button"
               onClick={onCancel}
-              className="flex-1 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors font-medium"
+              disabled={saving}
+              className="flex-1 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Cancelar
             </button>
             <button
               type="submit"
-              className="flex-1 px-4 py-2 bg-sky-600 text-white rounded-lg hover:bg-sky-700 transition-colors font-medium"
+              disabled={saving}
+              className="flex-1 px-4 py-2 bg-sky-600 text-white rounded-lg hover:bg-sky-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
-              Crear Cliente
+              {saving ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  Creando...
+                </>
+              ) : (
+                'Crear Cliente'
+              )}
             </button>
           </div>
         </form>
