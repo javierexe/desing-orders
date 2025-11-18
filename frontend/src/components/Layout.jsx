@@ -21,6 +21,7 @@ export default function Layout({
   const NAV = [
     { label: "Dashboard", key: "dashboard", path: "/dashboard" },
     { label: "Pedidos",   key: "orders",    path: "/pedidos" },
+    { label: "Tabla de Pedidos", key: "orders-table", path: "/tabla-pedidos" },
     { label: "Productos", key: "products", path: "/admin/products" },
     { label: "Clientes",  key: "clients",   path: "/admin/clients" },
     { label: "Reportes",  key: "reports",   path: "/reportes" },

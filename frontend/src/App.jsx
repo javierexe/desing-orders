@@ -10,6 +10,7 @@ import DashboardExpandible from "./pages/DashboardExpandible.jsx";
 import DashboardTabs from "./pages/DashboardTabs.jsx";
 import ProductAdmin from "./pages/ProductAdmin.jsx";
 import ClientAdmin from "./pages/ClientAdmin.jsx";
+import OrdersTable from "./pages/OrdersTable.jsx";
 import Reports from "./pages/Reports.jsx";
 import Settings from "./pages/Settings.jsx";
 import { ConfirmDialogProvider } from "./components/ConfirmDialog.jsx";
@@ -237,6 +238,14 @@ function AppInner() {
           element={
             <Layout title="Clientes">
               <ClientAdmin />
+            </Layout>
+          }
+        />
+        <Route
+          path="/tabla-pedidos"
+          element={
+            <Layout title="Tabla de Pedidos">
+              <OrdersTable />
             </Layout>
           }
         />
