@@ -13,8 +13,9 @@ const COLORS = {
 };
 
 export default function Dashboard({ orders = [] }) {
-  const [selectedMonth, setSelectedMonth] = useState(null); // null = mes actual, número = índice del mes
-  const [modalMonthData, setModalMonthData] = useState(null); // Datos del mes para el modal
+  // Inicializar con el mes actual (último índice de mesesConDatos)
+  const [selectedMonth, setSelectedMonth] = useState('current'); // 'current' = mes actual, null = todo el período
+  const [modalMonthData, setModalMonthData] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   
   const formatCLP = (amount) => {
@@ -69,10 +70,14 @@ export default function Dashboard({ orders = [] }) {
     let clientesUnicos = new Set();
     let pedidosAtrasados = 0;
     
-    // Si NO hay filtro (selectedMonth === null): sumar TODOS los pedidos hasta la fecha
-    // Si hay filtro: mostrar solo el mes seleccionado
+    // Determinar qué mes mostrar
+    // selectedMonth === null → Todo el período
+    // selectedMonth === 'current' → Mes actual (último con datos)
+    // selectedMonth === número → Mes específico
+    let mesNumKPI, yearNumKPI;
+    
     if (selectedMonth === null) {
-      // SIN FILTRO: Acumulado total
+      // TODO EL PERÍODO: Acumulado total
       orders.forEach(order => {
         if (order.due_date) {
           const orderDate = new Date(order.due_date);
@@ -83,7 +88,6 @@ export default function Dashboard({ orders = [] }) {
           pedidosMesActual++;
           if (order.client_name) clientesUnicos.add(order.client_name);
           
-          // Pedidos atrasados: due_date pasó y NO está en estados terminales
           const estadosExcluidos = ['entregado', 'cancelado', 'listo'];
           if (!estadosExcluidos.includes(order.status) && orderDate < now) {
             pedidosAtrasados++;
@@ -91,10 +95,17 @@ export default function Dashboard({ orders = [] }) {
         }
       });
     } else {
-      // CON FILTRO: Solo el mes seleccionado
-      const mesParaKPI = mesesConDatos[selectedMonth];
-      const mesNumKPI = mesParaKPI?.mesNum ?? currentMonth;
-      const yearNumKPI = mesParaKPI?.yearNum ?? currentYear;
+      // MES ESPECÍFICO o MES ACTUAL
+      if (selectedMonth === 'current') {
+        // Mes actual (usar currentMonth y currentYear)
+        mesNumKPI = currentMonth;
+        yearNumKPI = currentYear;
+      } else {
+        // Mes seleccionado por índice
+        const mesParaKPI = mesesConDatos[selectedMonth];
+        mesNumKPI = mesParaKPI?.mesNum ?? currentMonth;
+        yearNumKPI = mesParaKPI?.yearNum ?? currentYear;
+      }
       
       orders.forEach(order => {
         if (order.due_date) {
@@ -106,7 +117,6 @@ export default function Dashboard({ orders = [] }) {
             pedidosMesActual++;
             if (order.client_name) clientesUnicos.add(order.client_name);
             
-            // Pedidos atrasados del mes seleccionado
             const estadosExcluidos = ['entregado', 'cancelado', 'listo'];
             if (!estadosExcluidos.includes(order.status) && orderDate < now) {
               pedidosAtrasados++;
@@ -117,7 +127,9 @@ export default function Dashboard({ orders = [] }) {
     }
     
     // Calcular cambios respecto al mes anterior
-    const indiceActual = selectedMonth !== null ? selectedMonth : mesesConDatos.length - 1;
+    const indiceActual = selectedMonth === 'current' 
+      ? mesesConDatos.length - 1 
+      : (selectedMonth !== null ? selectedMonth : mesesConDatos.length - 1);
     const mesAnterior = indiceActual > 0 ? mesesConDatos[indiceActual - 1] : null;
     
     const cambioTotal = mesAnterior && mesAnterior.total > 0 
@@ -231,6 +243,8 @@ export default function Dashboard({ orders = [] }) {
           <p className="text-sm text-slate-500 mt-1">
             {selectedMonth === null 
               ? "Acumulado Total hasta la fecha"
+              : selectedMonth === 'current'
+              ? `Mes actual: ${new Date().toLocaleDateString('es-CL', { month: 'long', year: 'numeric' })}`
               : `Resumen de ${kpis.mesSeleccionado || new Date().toLocaleDateString('es-CL', { month: 'long', year: 'numeric' })}`
             }
           </p>
@@ -258,6 +272,16 @@ export default function Dashboard({ orders = [] }) {
               }`}
             >
               📊 Todo el período
+            </button>
+            <button
+              onClick={() => setSelectedMonth('current')}
+              className={`px-4 py-2 rounded-lg font-medium text-sm transition-all ${
+                selectedMonth === 'current'
+                  ? 'bg-blue-600 text-white shadow-md'
+                  : 'bg-blue-50 text-blue-700 hover:bg-blue-100'
+              }`}
+            >
+              📅 Mes actual
             </button>
             {kpis.mesesData.map((mes, idx) => (
               <button

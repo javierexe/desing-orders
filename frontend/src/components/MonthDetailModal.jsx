@@ -1,7 +1,7 @@
 // frontend/src/components/MonthDetailModal.jsx
 import React, { useMemo } from 'react';
 import { X, TrendingUp, Package, DollarSign } from 'lucide-react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { ComposedChart, Line, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 export default function MonthDetailModal({ isOpen, onClose, monthData, orders = [] }) {
   if (!isOpen || !monthData) return null;
@@ -41,6 +41,7 @@ export default function MonthDetailModal({ isOpen, onClose, monthData, orders = 
       days.push({
         day,
         date: dayDate.toLocaleDateString('es-CL', { day: 'numeric', month: 'short' }),
+        weekdayShort: dayDate.toLocaleDateString('es-CL', { weekday: 'short' }).slice(0, 3),
         total: totalDay,
         pagado: paidDay,
         pedidos: dayOrders.length
@@ -73,17 +74,15 @@ export default function MonthDetailModal({ isOpen, onClose, monthData, orders = 
 
   const CustomTooltip = ({ active, payload }) => {
     if (active && payload && payload.length) {
+      const data = payload[0].payload;
       return (
         <div className="bg-white border border-gray-300 rounded-lg shadow-lg p-3">
-          <p className="font-semibold text-gray-900">{payload[0].payload.date}</p>
+          <p className="font-semibold text-gray-900">{data.date}</p>
           <p className="text-sm text-gray-600">
-            Facturación: <span className="font-medium text-blue-600">{formatCLP(payload[0].value)}</span>
+            Facturación: <span className="font-medium text-blue-600">{formatCLP(data.total)}</span>
           </p>
           <p className="text-sm text-gray-600">
-            Cobrado: <span className="font-medium text-green-600">{formatCLP(payload[1]?.value || 0)}</span>
-          </p>
-          <p className="text-sm text-gray-600">
-            Pedidos: <span className="font-medium">{payload[0].payload.pedidos}</span>
+            Pedidos: <span className="font-medium text-purple-600">{data.pedidos}</span>
           </p>
         </div>
       );
@@ -149,39 +148,53 @@ export default function MonthDetailModal({ isOpen, onClose, monthData, orders = 
           <div className="bg-white border border-gray-200 rounded-lg p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Evolución Diaria</h3>
             <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={dailyData}>
+              <ComposedChart data={dailyData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                 <XAxis 
-                  dataKey="date" 
+                  dataKey="day" 
                   stroke="#6b7280"
-                  style={{ fontSize: '12px' }}
+                  style={{ fontSize: '11px' }}
+                  angle={-45}
+                  textAnchor="end"
+                  height={70}
+                  tickFormatter={(day) => {
+                    const dayData = dailyData.find(d => d.day === day);
+                    return dayData ? `${dayData.weekdayShort} ${day}` : day;
+                  }}
                 />
                 <YAxis 
+                  yAxisId="left"
                   stroke="#6b7280"
                   style={{ fontSize: '12px' }}
                   tickFormatter={(value) => `$${(value / 1000).toFixed(0)}K`}
                 />
+                <YAxis 
+                  yAxisId="right"
+                  orientation="right"
+                  stroke="#9333ea"
+                  style={{ fontSize: '12px' }}
+                />
                 <Tooltip content={<CustomTooltip />} />
-                <Legend />
+                <Legend wrapperStyle={{ paddingTop: '10px' }} />
+                <Bar 
+                  yAxisId="right"
+                  dataKey="pedidos" 
+                  fill="#a855f7"
+                  name="Pedidos"
+                  radius={[4, 4, 0, 0]}
+                  opacity={0.7}
+                />
                 <Line 
+                  yAxisId="left"
                   type="monotone" 
                   dataKey="total" 
                   stroke="#3b82f6" 
-                  strokeWidth={2}
+                  strokeWidth={3}
                   name="Facturación"
                   dot={{ fill: '#3b82f6', r: 4 }}
                   activeDot={{ r: 6 }}
                 />
-                <Line 
-                  type="monotone" 
-                  dataKey="pagado" 
-                  stroke="#22c55e" 
-                  strokeWidth={2}
-                  name="Cobrado"
-                  dot={{ fill: '#22c55e', r: 4 }}
-                  activeDot={{ r: 6 }}
-                />
-              </LineChart>
+              </ComposedChart>
             </ResponsiveContainer>
           </div>
 

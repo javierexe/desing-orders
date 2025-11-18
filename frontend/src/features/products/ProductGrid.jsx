@@ -211,6 +211,16 @@ export default function ProductGrid() {
 
       if (!res.ok) throw new Error('Error guardando');
       
+      // Obtener el producto actualizado del backend (con código generado si aplica)
+      const result = await res.json();
+      
+      // Actualizar el state con el producto retornado (incluye código si fue generado)
+      // La tabla se reordenará automáticamente según el sorting actual
+      if (result.rows && result.rows.length > 0) {
+        const updatedProduct = result.rows[0];
+        setData(prev => prev.map(p => p.id === rowId ? updatedProduct : p));
+      }
+      
       // Eliminar de dirty solo esta fila
       dirtyRows.current.delete(rowId);
       

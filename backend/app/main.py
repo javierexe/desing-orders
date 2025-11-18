@@ -544,7 +544,14 @@ def get_producto(producto_id: int, db: Session = Depends(get_db)):
 @app.post("/productos", response_model=schemas.ProductoOut, status_code=201)
 def create_producto(producto: schemas.ProductoCreate, db: Session = Depends(get_db)):
     """Crea un nuevo producto"""
+    # Generar código automáticamente SOLO si tiene categoría
+    # Si no tiene categoría, dejar codigo=None hasta que se asigne
+    codigo = None
+    if producto.categoria_id:
+        codigo = producto.codigo if hasattr(producto, 'codigo') and producto.codigo else generar_codigo_producto(db, producto.categoria_id)
+    
     nuevo_producto = models.Producto(
+        codigo=codigo,
         nombre=producto.nombre,
         categoria_id=producto.categoria_id,
         descripcion=producto.descripcion,
@@ -565,12 +572,22 @@ def generar_codigo_producto(db: Session, categoria_id: int = None):
     """Genera código único para producto tipo PAP-001 basado en categoría"""
     import time
     
+    # Mapeo especial para categorías
+    CATEGORY_CODE_MAP = {
+        'Gran Formato': 'GRF',  # GRA ya ocupado por Grabados
+        'Grabados': 'GRA',
+    }
+    
     # Obtener prefijo de categoría
     prefijo = "GEN"
     if categoria_id:
         cat = db.query(models.Categoria).filter(models.Categoria.id == categoria_id).first()
         if cat and cat.nombre:
-            prefijo = cat.nombre[:3].upper().replace(" ", "")
+            # Usar mapeo personalizado si existe
+            if cat.nombre in CATEGORY_CODE_MAP:
+                prefijo = CATEGORY_CODE_MAP[cat.nombre]
+            else:
+                prefijo = cat.nombre[:3].upper().replace(" ", "")
     
     # Contar productos con ese prefijo para obtener siguiente número
     from sqlalchemy import func
@@ -657,7 +674,11 @@ def bulk_upsert_products(payload: schemas.ProductoBulkUpsertRequest, db: Session
                     db.add(prod)
                     db.flush()
                 else:
-                    # Actualizar producto existente (no modificar codigo si ya existe)
+                    # Actualizar producto existente
+                    # Si no tiene código y ahora se asigna categoría, generar código
+                    if not prod.codigo and cat_id:
+                        prod.codigo = generar_codigo_producto(db, cat_id)
+                    
                     prod.nombre = up.nombre
                     prod.categoria_id = cat_id
                     prod.presentacion = up.presentacion
@@ -671,8 +692,8 @@ def bulk_upsert_products(payload: schemas.ProductoBulkUpsertRequest, db: Session
                 processed_rows.append(prod)
             else:
                 # crear nuevo producto (sin id)
-                # Generar código automáticamente
-                codigo = generar_codigo_producto(db, cat_id)
+                # Generar código automáticamente SOLO si tiene categoría
+                codigo = generar_codigo_producto(db, cat_id) if cat_id else None
                 prod = models.Producto(
                     codigo=codigo,
                     nombre=up.nombre,

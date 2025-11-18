@@ -51,6 +51,56 @@ export default function OrdersTable() {
     return statusConfig || STATUS_OPTIONS[0];
   };
 
+  // Función para exportar a CSV
+  const exportToCSV = () => {
+    if (filteredOrders.length === 0) {
+      toast.error('No hay pedidos para exportar');
+      return;
+    }
+
+    // Encabezados
+    const headers = ['Código', 'Cliente', 'Título', 'Estado', 'Vencimiento', 'Total', 'Pagado', 'Pendiente'];
+    
+    // Convertir datos
+    const csvData = filteredOrders.map(order => [
+      order.code || '',
+      order.client_name || '',
+      order.title || '',
+      getStatusBadge(order.status).label,
+      formatDate(order.due_date),
+      order.total_price || 0,
+      order.total_paid || 0,
+      (order.total_price || 0) - (order.total_paid || 0)
+    ]);
+
+    // Crear CSV
+    const csvContent = [
+      headers.join(','),
+      ...csvData.map(row => row.map(cell => {
+        // Escapar comillas y campos con comas
+        if (typeof cell === 'string' && (cell.includes(',') || cell.includes('"'))) {
+          return `"${cell.replace(/"/g, '""')}"`;
+        }
+        return cell;
+      }).join(','))
+    ].join('\n');
+
+    // Descargar archivo
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    
+    const timestamp = new Date().toISOString().split('T')[0];
+    link.setAttribute('href', url);
+    link.setAttribute('download', `pedidos_${timestamp}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    toast.success(`${filteredOrders.length} pedidos exportados`);
+  };
+
   // Fetch orders
   useEffect(() => {
     fetchOrders();
@@ -378,82 +428,93 @@ export default function OrdersTable() {
         </div>
 
         {/* Segunda fila: Filtros */}
-        <div className="flex flex-wrap gap-3 items-center">
-          <div className="flex items-center gap-2">
-            <Filter className="w-5 h-5 text-slate-600" />
-            <span className="text-sm font-medium text-slate-700">Filtros:</span>
+        <div className="flex flex-wrap gap-3 items-center justify-between">
+          <div className="flex flex-wrap gap-3 items-center">
+            <div className="flex items-center gap-2">
+              <Filter className="w-5 h-5 text-slate-600" />
+              <span className="text-sm font-medium text-slate-700">Filtros:</span>
+            </div>
+
+            {/* Filtro por estado */}
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+            >
+              <option value="all">📋 Todos los estados</option>
+              {STATUS_OPTIONS.map(opt => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+
+            {/* Filtro por pago */}
+            <select
+              value={paymentFilter}
+              onChange={(e) => setPaymentFilter(e.target.value)}
+              className="px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+            >
+              <option value="all">💰 Todos los pagos</option>
+              <option value="paid">✅ Pagado completo</option>
+              <option value="partial">⚠️ Pago parcial</option>
+              <option value="unpaid">❌ Sin pagar</option>
+            </select>
+
+            {/* Filtro por fecha */}
+            <select
+              value={dateFilter}
+              onChange={(e) => setDateFilter(e.target.value)}
+              className="px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+            >
+              <option value="all">📅 Todas las fechas</option>
+              <option value="overdue">🔴 Atrasados</option>
+              <option value="upcoming">⏰ Próximos 7 días</option>
+            </select>
           </div>
 
-          {/* Filtro por estado */}
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+          {/* Botón de exportar CSV */}
+          <button
+            onClick={exportToCSV}
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors"
           >
-            <option value="all">📋 Todos los estados</option>
-            {STATUS_OPTIONS.map(opt => (
-              <option key={opt.value} value={opt.value}>{opt.label}</option>
-            ))}
-          </select>
-
-          {/* Filtro por pago */}
-          <select
-            value={paymentFilter}
-            onChange={(e) => setPaymentFilter(e.target.value)}
-            className="px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
-          >
-            <option value="all">💰 Todos los pagos</option>
-            <option value="paid">✅ Pagado completo</option>
-            <option value="partial">⚠️ Pago parcial</option>
-            <option value="unpaid">❌ Sin pagar</option>
-          </select>
-
-          {/* Filtro por fecha */}
-          <select
-            value={dateFilter}
-            onChange={(e) => setDateFilter(e.target.value)}
-            className="px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
-          >
-            <option value="all">📅 Todas las fechas</option>
-            <option value="overdue">🔴 Atrasados</option>
-            <option value="upcoming">⏰ Próximos 7 días</option>
-          </select>
-
-          {/* Botón limpiar filtros */}
-          {(statusFilter !== 'all' || paymentFilter !== 'all' || dateFilter !== 'all' || searchQuery) && (
-            <button
-              onClick={() => {
-                setStatusFilter('all');
-                setPaymentFilter('all');
-                setDateFilter('all');
-                setSearchQuery('');
-              }}
-              className="px-3 py-2 text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
-            >
-              ✕ Limpiar filtros
-            </button>
-          )}
+            <Download className="w-4 h-4" />
+            Exportar CSV
+          </button>
         </div>
 
-        {/* Resumen totales */}
-        <div className="mt-4 pt-4 border-t border-slate-200">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="bg-slate-50 rounded-lg p-3">
-              <p className="text-xs text-slate-500 mb-1">Pedidos</p>
-              <p className="text-xl font-bold text-slate-900">{filteredOrders.length}</p>
-            </div>
-            <div className="bg-blue-50 rounded-lg p-3">
-              <p className="text-xs text-blue-600 mb-1">Total Facturado</p>
-              <p className="text-xl font-bold text-blue-900">{formatCLP(totals.totalPrice)}</p>
-            </div>
-            <div className="bg-green-50 rounded-lg p-3">
-              <p className="text-xs text-green-600 mb-1">Total Cobrado</p>
-              <p className="text-xl font-bold text-green-900">{formatCLP(totals.totalPaid)}</p>
-            </div>
-            <div className="bg-amber-50 rounded-lg p-3">
-              <p className="text-xs text-amber-600 mb-1">Total Pendiente</p>
-              <p className="text-xl font-bold text-amber-900">{formatCLP(totals.totalPending)}</p>
-            </div>
+        {/* Botón limpiar filtros */}
+        {(statusFilter !== 'all' || paymentFilter !== 'all' || dateFilter !== 'all' || searchQuery) && (
+          <button
+            onClick={() => {
+              setStatusFilter('all');
+              setPaymentFilter('all');
+              setDateFilter('all');
+              setSearchQuery('');
+            }}
+            className="px-3 py-2 text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
+          >
+            ✕ Limpiar filtros
+          </button>
+        )}
+      </div>
+
+      {/* Resumen totales */}
+      <div className="bg-white rounded-xl border border-slate-200 p-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="bg-slate-50 rounded-lg p-3">
+            <p className="text-xs text-slate-500 mb-1">Pedidos</p>
+            <p className="text-xl font-bold text-slate-900">{filteredOrders.length}</p>
+          </div>
+          <div className="bg-blue-50 rounded-lg p-3">
+            <p className="text-xs text-blue-600 mb-1">Total Facturado</p>
+            <p className="text-xl font-bold text-blue-900">{formatCLP(totals.totalPrice)}</p>
+          </div>
+          <div className="bg-green-50 rounded-lg p-3">
+            <p className="text-xs text-green-600 mb-1">Total Cobrado</p>
+            <p className="text-xl font-bold text-green-900">{formatCLP(totals.totalPaid)}</p>
+          </div>
+          <div className="bg-amber-50 rounded-lg p-3">
+            <p className="text-xs text-amber-600 mb-1">Total Pendiente</p>
+            <p className="text-xl font-bold text-amber-900">{formatCLP(totals.totalPending)}</p>
           </div>
         </div>
       </div>
