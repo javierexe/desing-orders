@@ -22,6 +22,8 @@ export default function OrdersTable() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [paymentFilter, setPaymentFilter] = useState('all'); // all, paid, partial, unpaid
+  const [dateFilter, setDateFilter] = useState('all'); // all, overdue, upcoming
   const [sorting, setSorting] = useState([{ id: 'code', desc: true }]);
   const [editingOrder, setEditingOrder] = useState(null);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -125,10 +127,37 @@ export default function OrdersTable() {
       filtered = filtered.filter(order => order.status === statusFilter);
     }
 
-    return filtered;
-  }, [orders, searchQuery, statusFilter]);
+    // Filtro por pago
+    if (paymentFilter === 'paid') {
+      filtered = filtered.filter(order => (order.total_paid || 0) >= (order.total_price || 0) && order.total_price > 0);
+    } else if (paymentFilter === 'partial') {
+      filtered = filtered.filter(order => (order.total_paid || 0) > 0 && (order.total_paid || 0) < (order.total_price || 0));
+    } else if (paymentFilter === 'unpaid') {
+      filtered = filtered.filter(order => (order.total_paid || 0) === 0 && (order.total_price || 0) > 0);
+    }
 
-  // Definir columnas
+    // Filtro por fecha
+    if (dateFilter === 'overdue') {
+      const now = new Date();
+      filtered = filtered.filter(order => 
+        order.due_date && 
+        new Date(order.due_date) < now &&
+        !['entregado', 'listo'].includes(order.status)
+      );
+    } else if (dateFilter === 'upcoming') {
+      const now = new Date();
+      const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+      filtered = filtered.filter(order => 
+        order.due_date && 
+        new Date(order.due_date) >= now &&
+        new Date(order.due_date) <= sevenDaysFromNow
+      );
+    }
+
+    return filtered;
+  }, [orders, searchQuery, statusFilter, paymentFilter, dateFilter]);
+
+  // Definir columnas con anchos específicos
   const columns = useMemo(() => [
     {
       accessorKey: 'code',
@@ -148,6 +177,8 @@ export default function OrdersTable() {
           {row.original.code}
         </span>
       ),
+      size: 100,
+      minSize: 90,
     },
     {
       accessorKey: 'client_name',
@@ -163,13 +194,15 @@ export default function OrdersTable() {
         </button>
       ),
       cell: ({ row }) => (
-        <div>
-          <p className="font-medium text-slate-900">{row.original.client_name || 'Sin nombre'}</p>
+        <div className="min-w-[200px]">
+          <p className="font-medium text-slate-900 truncate">{row.original.client_name || 'Sin nombre'}</p>
           {row.original.title && (
-            <p className="text-xs text-slate-500 truncate max-w-xs">{row.original.title}</p>
+            <p className="text-xs text-slate-500 truncate">{row.original.title}</p>
           )}
         </div>
       ),
+      size: 250,
+      minSize: 200,
     },
     {
       accessorKey: 'status',
@@ -180,7 +213,7 @@ export default function OrdersTable() {
           <select
             value={row.original.status}
             onChange={(e) => handleStatusChange(row.original.id, e.target.value)}
-            className={`px-3 py-1 rounded-full text-xs font-medium border-0 cursor-pointer ${statusConfig.color}`}
+            className={`w-full px-3 py-1.5 rounded-full text-xs font-medium border-0 cursor-pointer ${statusConfig.color}`}
           >
             {STATUS_OPTIONS.map(opt => (
               <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -188,6 +221,8 @@ export default function OrdersTable() {
           </select>
         );
       },
+      size: 140,
+      minSize: 130,
     },
     {
       accessorKey: 'due_date',
@@ -208,11 +243,13 @@ export default function OrdersTable() {
                          new Date(row.original.due_date) < new Date() &&
                          !['entregado', 'listo'].includes(row.original.status);
         return (
-          <span className={isOverdue ? 'text-red-600 font-medium' : 'text-slate-700'}>
+          <span className={`text-sm whitespace-nowrap ${isOverdue ? 'text-red-600 font-medium' : 'text-slate-700'}`}>
             {formatDate(row.original.due_date)}
           </span>
         );
       },
+      size: 120,
+      minSize: 110,
     },
     {
       accessorKey: 'total_price',
@@ -221,7 +258,6 @@ export default function OrdersTable() {
           onClick={() => column.toggleSorting()}
           className="flex items-center gap-1 font-semibold hover:text-blue-600"
         >
-          <DollarSign className="w-4 h-4" />
           Total
           {column.getIsSorted() === 'asc' ? <ArrowUp className="w-4 h-4" /> :
            column.getIsSorted() === 'desc' ? <ArrowDown className="w-4 h-4" /> :
@@ -229,19 +265,23 @@ export default function OrdersTable() {
         </button>
       ),
       cell: ({ row }) => (
-        <span className="font-medium text-slate-900">
+        <span className="font-medium text-slate-900 text-sm whitespace-nowrap">
           {formatCLP(row.original.total_price)}
         </span>
       ),
+      size: 120,
+      minSize: 100,
     },
     {
       accessorKey: 'total_paid',
       header: 'Pagado',
       cell: ({ row }) => (
-        <span className="font-medium text-green-600">
+        <span className="font-medium text-green-600 text-sm whitespace-nowrap">
           {formatCLP(row.original.total_paid)}
         </span>
       ),
+      size: 120,
+      minSize: 100,
     },
     {
       accessorKey: 'pending_amount',
@@ -249,33 +289,37 @@ export default function OrdersTable() {
       cell: ({ row }) => {
         const pending = (row.original.total_price || 0) - (row.original.total_paid || 0);
         return (
-          <span className={`font-medium ${pending > 0 ? 'text-amber-600' : 'text-slate-400'}`}>
+          <span className={`font-medium text-sm whitespace-nowrap ${pending > 0 ? 'text-amber-600' : 'text-slate-400'}`}>
             {formatCLP(pending)}
           </span>
         );
       },
+      size: 120,
+      minSize: 100,
     },
     {
       id: 'actions',
       header: 'Acciones',
       cell: ({ row }) => (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1">
           <button
             onClick={() => handleEdit(row.original)}
-            className="p-2 hover:bg-blue-50 rounded-lg transition-colors"
+            className="p-1.5 hover:bg-blue-50 rounded-lg transition-colors"
             title="Editar"
           >
             <Edit className="w-4 h-4 text-blue-600" />
           </button>
           <button
             onClick={() => handleDelete(row.original)}
-            className="p-2 hover:bg-red-50 rounded-lg transition-colors"
+            className="p-1.5 hover:bg-red-50 rounded-lg transition-colors"
             title="Eliminar"
           >
             <Trash2 className="w-4 h-4 text-red-600" />
           </button>
         </div>
       ),
+      size: 90,
+      minSize: 80,
     },
   ], []);
 
@@ -309,55 +353,96 @@ export default function OrdersTable() {
     <div className="space-y-4">
       {/* Filtros y búsqueda */}
       <div className="bg-white rounded-xl border border-slate-200 p-4">
-        <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
-          {/* Búsqueda */}
-          <div className="flex-1 max-w-md">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Buscar por código, cliente o título..."
-                className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
+        {/* Primera fila: Búsqueda */}
+        <div className="mb-4">
+          <div className="relative max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Buscar por código, cliente o título..."
+              className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+        </div>
+
+        {/* Segunda fila: Filtros */}
+        <div className="flex flex-wrap gap-3 items-center">
+          <div className="flex items-center gap-2">
+            <Filter className="w-5 h-5 text-slate-600" />
+            <span className="text-sm font-medium text-slate-700">Filtros:</span>
           </div>
 
           {/* Filtro por estado */}
-          <div className="flex items-center gap-2">
-            <Filter className="w-5 h-5 text-slate-600" />
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+          >
+            <option value="all">📋 Todos los estados</option>
+            {STATUS_OPTIONS.map(opt => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
+          </select>
+
+          {/* Filtro por pago */}
+          <select
+            value={paymentFilter}
+            onChange={(e) => setPaymentFilter(e.target.value)}
+            className="px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+          >
+            <option value="all">💰 Todos los pagos</option>
+            <option value="paid">✅ Pagado completo</option>
+            <option value="partial">⚠️ Pago parcial</option>
+            <option value="unpaid">❌ Sin pagar</option>
+          </select>
+
+          {/* Filtro por fecha */}
+          <select
+            value={dateFilter}
+            onChange={(e) => setDateFilter(e.target.value)}
+            className="px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+          >
+            <option value="all">📅 Todas las fechas</option>
+            <option value="overdue">🔴 Atrasados</option>
+            <option value="upcoming">⏰ Próximos 7 días</option>
+          </select>
+
+          {/* Botón limpiar filtros */}
+          {(statusFilter !== 'all' || paymentFilter !== 'all' || dateFilter !== 'all' || searchQuery) && (
+            <button
+              onClick={() => {
+                setStatusFilter('all');
+                setPaymentFilter('all');
+                setDateFilter('all');
+                setSearchQuery('');
+              }}
+              className="px-3 py-2 text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
             >
-              <option value="all">Todos los estados</option>
-              {STATUS_OPTIONS.map(opt => (
-                <option key={opt.value} value={opt.value}>{opt.label}</option>
-              ))}
-            </select>
-          </div>
+              ✕ Limpiar filtros
+            </button>
+          )}
         </div>
 
         {/* Resumen totales */}
         <div className="mt-4 pt-4 border-t border-slate-200">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div>
-              <p className="text-xs text-slate-500">Pedidos</p>
-              <p className="text-lg font-bold text-slate-900">{filteredOrders.length}</p>
+            <div className="bg-slate-50 rounded-lg p-3">
+              <p className="text-xs text-slate-500 mb-1">Pedidos</p>
+              <p className="text-xl font-bold text-slate-900">{filteredOrders.length}</p>
             </div>
-            <div>
-              <p className="text-xs text-slate-500">Total Facturado</p>
-              <p className="text-lg font-bold text-slate-900">{formatCLP(totals.totalPrice)}</p>
+            <div className="bg-blue-50 rounded-lg p-3">
+              <p className="text-xs text-blue-600 mb-1">Total Facturado</p>
+              <p className="text-xl font-bold text-blue-900">{formatCLP(totals.totalPrice)}</p>
             </div>
-            <div>
-              <p className="text-xs text-slate-500">Total Cobrado</p>
-              <p className="text-lg font-bold text-green-600">{formatCLP(totals.totalPaid)}</p>
+            <div className="bg-green-50 rounded-lg p-3">
+              <p className="text-xs text-green-600 mb-1">Total Cobrado</p>
+              <p className="text-xl font-bold text-green-900">{formatCLP(totals.totalPaid)}</p>
             </div>
-            <div>
-              <p className="text-xs text-slate-500">Total Pendiente</p>
-              <p className="text-lg font-bold text-amber-600">{formatCLP(totals.totalPending)}</p>
+            <div className="bg-amber-50 rounded-lg p-3">
+              <p className="text-xs text-amber-600 mb-1">Total Pendiente</p>
+              <p className="text-xl font-bold text-amber-900">{formatCLP(totals.totalPending)}</p>
             </div>
           </div>
         </div>
@@ -366,14 +451,24 @@ export default function OrdersTable() {
       {/* Tabla */}
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full">
+          <table className="w-full table-fixed">
+            <colgroup>
+              <col style={{ width: '100px' }} />  {/* Código */}
+              <col style={{ width: '250px' }} />  {/* Cliente */}
+              <col style={{ width: '140px' }} />  {/* Estado */}
+              <col style={{ width: '120px' }} />  {/* Vencimiento */}
+              <col style={{ width: '120px' }} />  {/* Total */}
+              <col style={{ width: '120px' }} />  {/* Pagado */}
+              <col style={{ width: '120px' }} />  {/* Pendiente */}
+              <col style={{ width: '90px' }} />   {/* Acciones */}
+            </colgroup>
             <thead className="bg-slate-50 border-b border-slate-200">
               {table.getHeaderGroups().map(headerGroup => (
                 <tr key={headerGroup.id}>
                   {headerGroup.headers.map(header => (
                     <th
                       key={header.id}
-                      className="px-4 py-3 text-left text-sm text-slate-700"
+                      className="px-3 py-3 text-left text-sm text-slate-700"
                     >
                       {flexRender(header.column.columnDef.header, header.getContext())}
                     </th>
@@ -385,7 +480,9 @@ export default function OrdersTable() {
               {table.getRowModel().rows.length === 0 ? (
                 <tr>
                   <td colSpan={columns.length} className="px-4 py-12 text-center text-slate-500">
-                    No se encontraron pedidos
+                    {searchQuery || statusFilter !== 'all' || paymentFilter !== 'all' || dateFilter !== 'all' 
+                      ? '🔍 No se encontraron pedidos con los filtros aplicados'
+                      : '📦 No hay pedidos registrados'}
                   </td>
                 </tr>
               ) : (
@@ -395,7 +492,7 @@ export default function OrdersTable() {
                     className="hover:bg-slate-50 transition-colors"
                   >
                     {row.getVisibleCells().map(cell => (
-                      <td key={cell.id} className="px-4 py-3 text-sm">
+                      <td key={cell.id} className="px-3 py-3 text-sm">
                         {flexRender(cell.column.columnDef.cell, cell.getContext())}
                       </td>
                     ))}
