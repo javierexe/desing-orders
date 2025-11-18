@@ -6,8 +6,12 @@ import Kanban from "./components/Kanban.jsx";
 import NewOrderModal from "./components/NewOrderModal.jsx";
 import PreviewModal from "./components/PreviewModal.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
+import DashboardExpandible from "./pages/DashboardExpandible.jsx";
+import DashboardTabs from "./pages/DashboardTabs.jsx";
 import ProductAdmin from "./pages/ProductAdmin.jsx";
 import ClientAdmin from "./pages/ClientAdmin.jsx";
+import Reports from "./pages/Reports.jsx";
+import Settings from "./pages/Settings.jsx";
 import { ConfirmDialogProvider } from "./components/ConfirmDialog.jsx";
 import { api } from "./lib/api.js";
 import { startKeepalive, stopKeepalive } from "./utils/keepalive.js";
@@ -142,6 +146,22 @@ function AppInner() {
           }
         />
         <Route
+          path="/dashboard-expandible"
+          element={
+            <Layout title="Dashboard Expandible (Opción 2)">
+              <DashboardExpandible orders={orders} />
+            </Layout>
+          }
+        />
+        <Route
+          path="/dashboard-tabs"
+          element={
+            <Layout title="Dashboard con Tabs (Opción 3)">
+              <DashboardTabs orders={orders} />
+            </Layout>
+          }
+        />
+        <Route
           path="/pedidos"
           element={
             <Layout
@@ -217,6 +237,22 @@ function AppInner() {
           element={
             <Layout title="Clientes">
               <ClientAdmin />
+            </Layout>
+          }
+        />
+        <Route
+          path="/reportes"
+          element={
+            <Layout title="Reportes">
+              <Reports orders={orders} />
+            </Layout>
+          }
+        />
+        <Route
+          path="/configuracion"
+          element={
+            <Layout title="Configuración">
+              <Settings />
             </Layout>
           }
         />
