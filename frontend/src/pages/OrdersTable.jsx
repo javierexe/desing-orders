@@ -210,15 +210,17 @@ export default function OrdersTable() {
       cell: ({ row }) => {
         const statusConfig = getStatusBadge(row.original.status);
         return (
-          <select
-            value={row.original.status}
-            onChange={(e) => handleStatusChange(row.original.id, e.target.value)}
-            className={`w-full px-3 py-1.5 rounded-full text-xs font-medium border-0 cursor-pointer ${statusConfig.color}`}
-          >
-            {STATUS_OPTIONS.map(opt => (
-              <option key={opt.value} value={opt.value}>{opt.label}</option>
-            ))}
-          </select>
+          <div className="flex justify-center">
+            <select
+              value={row.original.status}
+              onChange={(e) => handleStatusChange(row.original.id, e.target.value)}
+              className={`px-3 py-1.5 rounded-full text-xs font-medium border-0 cursor-pointer ${statusConfig.color}`}
+            >
+              {STATUS_OPTIONS.map(opt => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+          </div>
         );
       },
       size: 140,
@@ -229,7 +231,7 @@ export default function OrdersTable() {
       header: ({ column }) => (
         <button
           onClick={() => column.toggleSorting()}
-          className="flex items-center gap-1 font-semibold hover:text-blue-600"
+          className="flex items-center gap-1 font-semibold hover:text-blue-600 mx-auto"
         >
           <Calendar className="w-4 h-4" />
           Vencimiento
@@ -243,9 +245,11 @@ export default function OrdersTable() {
                          new Date(row.original.due_date) < new Date() &&
                          !['entregado', 'listo'].includes(row.original.status);
         return (
-          <span className={`text-sm whitespace-nowrap ${isOverdue ? 'text-red-600 font-medium' : 'text-slate-700'}`}>
-            {formatDate(row.original.due_date)}
-          </span>
+          <div className="text-center">
+            <span className={`text-sm whitespace-nowrap ${isOverdue ? 'text-red-600 font-medium' : 'text-slate-700'}`}>
+              {formatDate(row.original.due_date)}
+            </span>
+          </div>
         );
       },
       size: 120,
@@ -256,7 +260,7 @@ export default function OrdersTable() {
       header: ({ column }) => (
         <button
           onClick={() => column.toggleSorting()}
-          className="flex items-center gap-1 font-semibold hover:text-blue-600"
+          className="flex items-center gap-1 font-semibold hover:text-blue-600 ml-auto"
         >
           Total
           {column.getIsSorted() === 'asc' ? <ArrowUp className="w-4 h-4" /> :
@@ -265,33 +269,39 @@ export default function OrdersTable() {
         </button>
       ),
       cell: ({ row }) => (
-        <span className="font-medium text-slate-900 text-sm whitespace-nowrap">
-          {formatCLP(row.original.total_price)}
-        </span>
+        <div className="text-right">
+          <span className="font-medium text-slate-900 text-sm whitespace-nowrap">
+            {formatCLP(row.original.total_price)}
+          </span>
+        </div>
       ),
       size: 120,
       minSize: 100,
     },
     {
       accessorKey: 'total_paid',
-      header: 'Pagado',
+      header: () => <div className="text-right font-semibold">Pagado</div>,
       cell: ({ row }) => (
-        <span className="font-medium text-green-600 text-sm whitespace-nowrap">
-          {formatCLP(row.original.total_paid)}
-        </span>
+        <div className="text-right">
+          <span className="font-medium text-green-600 text-sm whitespace-nowrap">
+            {formatCLP(row.original.total_paid)}
+          </span>
+        </div>
       ),
       size: 120,
       minSize: 100,
     },
     {
       accessorKey: 'pending_amount',
-      header: 'Pendiente',
+      header: () => <div className="text-right font-semibold">Pendiente</div>,
       cell: ({ row }) => {
         const pending = (row.original.total_price || 0) - (row.original.total_paid || 0);
         return (
-          <span className={`font-medium text-sm whitespace-nowrap ${pending > 0 ? 'text-amber-600' : 'text-slate-400'}`}>
-            {formatCLP(pending)}
-          </span>
+          <div className="text-right">
+            <span className={`font-medium text-sm whitespace-nowrap ${pending > 0 ? 'text-amber-600' : 'text-slate-400'}`}>
+              {formatCLP(pending)}
+            </span>
+          </div>
         );
       },
       size: 120,
@@ -299,9 +309,9 @@ export default function OrdersTable() {
     },
     {
       id: 'actions',
-      header: 'Acciones',
+      header: () => <div className="text-center font-semibold">Acciones</div>,
       cell: ({ row }) => (
-        <div className="flex items-center gap-1">
+        <div className="flex items-center justify-center gap-1">
           <button
             onClick={() => handleEdit(row.original)}
             className="p-1.5 hover:bg-blue-50 rounded-lg transition-colors"
@@ -454,8 +464,8 @@ export default function OrdersTable() {
           <table className="w-full table-fixed">
             <colgroup>
               <col style={{ width: '100px' }} />  {/* Código */}
-              <col style={{ width: '250px' }} />  {/* Cliente */}
-              <col style={{ width: '140px' }} />  {/* Estado */}
+              <col style={{ width: '150px' }} />  {/* Cliente */}
+              <col style={{ width: '90px' }} />  {/* Estado */}
               <col style={{ width: '120px' }} />  {/* Vencimiento */}
               <col style={{ width: '120px' }} />  {/* Total */}
               <col style={{ width: '120px' }} />  {/* Pagado */}
@@ -465,21 +475,30 @@ export default function OrdersTable() {
             <thead className="bg-slate-50 border-b border-slate-200">
               {table.getHeaderGroups().map(headerGroup => (
                 <tr key={headerGroup.id}>
-                  {headerGroup.headers.map(header => (
-                    <th
-                      key={header.id}
-                      className="px-3 py-3 text-left text-sm text-slate-700"
-                    >
-                      {flexRender(header.column.columnDef.header, header.getContext())}
-                    </th>
-                  ))}
+                  {headerGroup.headers.map((header, index) => {
+                    // Determinar alineación según la columna
+                    let alignClass = 'text-left';
+                    if (index === 2) alignClass = 'text-center'; // Estado
+                    if (index === 3) alignClass = 'text-center'; // Vencimiento
+                    if (index >= 4 && index <= 6) alignClass = 'text-right'; // Total, Pagado, Pendiente
+                    if (index === 7) alignClass = 'text-center'; // Acciones
+                    
+                    return (
+                      <th
+                        key={header.id}
+                        className={`px-3 py-3 text-sm text-slate-700 ${alignClass}`}
+                      >
+                        {flexRender(header.column.columnDef.header, header.getContext())}
+                      </th>
+                    );
+                  })}
                 </tr>
               ))}
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-slate-100 text-sm">
               {table.getRowModel().rows.length === 0 ? (
                 <tr>
-                  <td colSpan={columns.length} className="px-4 py-12 text-center text-slate-500">
+                  <td colSpan={columns.length} className="px-3 py-12 text-center text-slate-500">
                     {searchQuery || statusFilter !== 'all' || paymentFilter !== 'all' || dateFilter !== 'all' 
                       ? '🔍 No se encontraron pedidos con los filtros aplicados'
                       : '📦 No hay pedidos registrados'}
