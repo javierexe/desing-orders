@@ -62,46 +62,7 @@ export default function Layout({
           ))}
         </nav>
 
-        {/* Selector de versión Dashboard - Solo desktop */}
-        {isDashboard && (
-          <div className="mt-6 pt-6 border-t border-slate-200">
-            <p className="text-xs font-semibold text-slate-500 mb-2 px-3">
-              🧪 Comparar Versiones
-            </p>
-            <div className="space-y-1">
-              <button
-                onClick={() => navigate('/dashboard')}
-                className={`w-full text-left text-xs px-3 py-2 rounded-lg ${
-                  currentDashboard === '/dashboard' 
-                    ? 'bg-blue-100 text-blue-700 font-medium' 
-                    : 'text-slate-600 hover:bg-slate-50'
-                }`}
-              >
-                <span className="font-semibold">Opción 1:</span> Modal/Overlay
-              </button>
-              <button
-                onClick={() => navigate('/dashboard-expandible')}
-                className={`w-full text-left text-xs px-3 py-2 rounded-lg ${
-                  currentDashboard === '/dashboard-expandible' 
-                    ? 'bg-blue-100 text-blue-700 font-medium' 
-                    : 'text-slate-600 hover:bg-slate-50'
-                }`}
-              >
-                <span className="font-semibold">Opción 2:</span> Expandible
-              </button>
-              <button
-                onClick={() => navigate('/dashboard-tabs')}
-                className={`w-full text-left text-xs px-3 py-2 rounded-lg ${
-                  currentDashboard === '/dashboard-tabs' 
-                    ? 'bg-blue-100 text-blue-700 font-medium' 
-                    : 'text-slate-600 hover:bg-slate-50'
-                }`}
-              >
-                <span className="font-semibold">Opción 3:</span> Con Tabs
-              </button>
-            </div>
-          </div>
-        )}
+
       </aside>
 
       {/* Backdrop móvil */}
@@ -148,55 +109,7 @@ export default function Layout({
           ))}
         </nav>
 
-        {/* Selector de versión Dashboard - Solo móvil */}
-        {isDashboard && (
-          <div className="mt-6 pt-6 border-t border-slate-200">
-            <p className="text-xs font-semibold text-slate-500 mb-2 px-3">
-              🧪 Comparar Versiones
-            </p>
-            <div className="space-y-1">
-              <button
-                onClick={() => {
-                  navigate('/dashboard');
-                  setOpen(false);
-                }}
-                className={`w-full text-left text-xs px-3 py-2 rounded-lg ${
-                  currentDashboard === '/dashboard' 
-                    ? 'bg-blue-100 text-blue-700 font-medium' 
-                    : 'text-slate-600 hover:bg-slate-50'
-                }`}
-              >
-                <span className="font-semibold">Opción 1:</span> Modal/Overlay
-              </button>
-              <button
-                onClick={() => {
-                  navigate('/dashboard-expandible');
-                  setOpen(false);
-                }}
-                className={`w-full text-left text-xs px-3 py-2 rounded-lg ${
-                  currentDashboard === '/dashboard-expandible' 
-                    ? 'bg-blue-100 text-blue-700 font-medium' 
-                    : 'text-slate-600 hover:bg-slate-50'
-                }`}
-              >
-                <span className="font-semibold">Opción 2:</span> Expandible
-              </button>
-              <button
-                onClick={() => {
-                  navigate('/dashboard-tabs');
-                  setOpen(false);
-                }}
-                className={`w-full text-left text-xs px-3 py-2 rounded-lg ${
-                  currentDashboard === '/dashboard-tabs' 
-                    ? 'bg-blue-100 text-blue-700 font-medium' 
-                    : 'text-slate-600 hover:bg-slate-50'
-                }`}
-              >
-                <span className="font-semibold">Opción 3:</span> Con Tabs
-              </button>
-            </div>
-          </div>
-        )}
+
       </aside>
 
       {/* Main */}

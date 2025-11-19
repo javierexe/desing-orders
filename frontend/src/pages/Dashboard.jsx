@@ -27,6 +27,33 @@ export default function Dashboard({ orders = [] }) {
     }).format(amount);
   };
 
+  // Handler para cambiar de mes en el modal
+  const handleMonthChange = (newMesNum, newYearNum) => {
+    // Buscar si existe data para el mes solicitado
+    const pedidosDelMes = orders.filter(o => {
+      if (!o.due_date) return false;
+      const orderDate = new Date(o.due_date);
+      return orderDate.getMonth() === newMesNum && orderDate.getFullYear() === newYearNum;
+    });
+    
+    const totalMes = pedidosDelMes.reduce((sum, o) => sum + (o.total_price || 0), 0);
+    const pagadoMes = pedidosDelMes.reduce((sum, o) => sum + (o.total_paid || 0), 0);
+    
+    const mes = new Date(newYearNum, newMesNum, 1);
+    
+    const newMonthData = {
+      mes: mes.toLocaleDateString('es-CL', { month: 'short', year: 'numeric' }),
+      total: totalMes,
+      pagado: pagadoMes,
+      pendiente: totalMes - pagadoMes,
+      pedidos: pedidosDelMes.length,
+      mesNum: newMesNum,
+      yearNum: newYearNum
+    };
+    
+    setModalMonthData(newMonthData);
+  };
+
   // Calcular KPIs financieros
   const kpis = useMemo(() => {
     const now = new Date();
@@ -579,6 +606,7 @@ export default function Dashboard({ orders = [] }) {
         onClose={() => setIsModalOpen(false)}
         monthData={modalMonthData}
         orders={orders}
+        onMonthChange={handleMonthChange}
       />
     </div>
   );

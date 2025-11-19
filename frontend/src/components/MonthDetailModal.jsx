@@ -1,9 +1,9 @@
 // frontend/src/components/MonthDetailModal.jsx
 import React, { useMemo } from 'react';
-import { X, TrendingUp, Package, DollarSign } from 'lucide-react';
+import { X, TrendingUp, Package, DollarSign, ChevronLeft, ChevronRight } from 'lucide-react';
 import { ComposedChart, Line, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
-export default function MonthDetailModal({ isOpen, onClose, monthData, orders = [] }) {
+export default function MonthDetailModal({ isOpen, onClose, monthData, orders = [], onMonthChange }) {
   if (!isOpen || !monthData) return null;
 
   const formatCLP = (amount) => {
@@ -14,6 +14,71 @@ export default function MonthDetailModal({ isOpen, onClose, monthData, orders = 
       maximumFractionDigits: 0
     }).format(amount);
   };
+
+  // Verificar si hay datos en el mes anterior o siguiente
+  const hasDataInMonth = (checkMesNum, checkYearNum) => {
+    return orders.some(o => {
+      if (!o.due_date) return false;
+      const orderDate = new Date(o.due_date);
+      return orderDate.getMonth() === checkMesNum && orderDate.getFullYear() === checkYearNum;
+    });
+  };
+
+  const canGoToPreviousMonth = useMemo(() => {
+    if (!monthData) return false;
+    const { mesNum, yearNum } = monthData;
+    const prevMonth = mesNum === 0 ? 11 : mesNum - 1;
+    const prevYear = mesNum === 0 ? yearNum - 1 : yearNum;
+    return hasDataInMonth(prevMonth, prevYear);
+  }, [monthData, orders]);
+
+  const canGoToNextMonth = useMemo(() => {
+    if (!monthData) return false;
+    const { mesNum, yearNum } = monthData;
+    const nextMonth = mesNum === 11 ? 0 : mesNum + 1;
+    const nextYear = mesNum === 11 ? yearNum + 1 : yearNum;
+    return hasDataInMonth(nextMonth, nextYear);
+  }, [monthData, orders]);
+
+  // Función para navegar entre meses
+  const handlePreviousMonth = () => {
+    if (!onMonthChange || !monthData || !canGoToPreviousMonth) return;
+    const { mesNum, yearNum } = monthData;
+    const prevMonth = mesNum === 0 ? 11 : mesNum - 1;
+    const prevYear = mesNum === 0 ? yearNum - 1 : yearNum;
+    onMonthChange(prevMonth, prevYear);
+  };
+
+  const handleNextMonth = () => {
+    if (!onMonthChange || !monthData || !canGoToNextMonth) return;
+    const { mesNum, yearNum } = monthData;
+    const nextMonth = mesNum === 11 ? 0 : mesNum + 1;
+    const nextYear = mesNum === 11 ? yearNum + 1 : yearNum;
+    onMonthChange(nextMonth, nextYear);
+  };
+
+  // Calcular el máximo de facturación y pedidos de TODOS los meses para mantener escala consistente
+  const { maxTotal, maxPedidos } = useMemo(() => {
+    if (!orders || orders.length === 0) return { maxTotal: 0, maxPedidos: 0 };
+    
+    // Agrupar por día y encontrar los máximos globales
+    const dailyTotals = new Map();
+    const dailyPedidosCount = new Map();
+    
+    orders.forEach(o => {
+      if (!o.due_date) return;
+      const orderDate = new Date(o.due_date);
+      const key = `${orderDate.getFullYear()}-${orderDate.getMonth()}-${orderDate.getDate()}`;
+      
+      dailyTotals.set(key, (dailyTotals.get(key) || 0) + (o.total_price || 0));
+      dailyPedidosCount.set(key, (dailyPedidosCount.get(key) || 0) + 1);
+    });
+    
+    const maxTotal = Math.max(...Array.from(dailyTotals.values()), 0);
+    const maxPedidos = Math.max(...Array.from(dailyPedidosCount.values()), 0);
+    
+    return { maxTotal, maxPedidos };
+  }, [orders]);
 
   // Calcular datos diarios del mes
   const dailyData = useMemo(() => {
@@ -95,9 +160,39 @@ export default function MonthDetailModal({ isOpen, onClose, monthData, orders = 
       <div className="bg-white rounded-lg shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900">{monthData?.mes}</h2>
-            <p className="text-sm text-gray-500">Detalle día por día</p>
+          <div className="flex items-center gap-4">
+            {/* Botón mes anterior */}
+            <button
+              onClick={handlePreviousMonth}
+              disabled={!canGoToPreviousMonth}
+              className={`p-2 rounded-full transition-colors ${
+                canGoToPreviousMonth 
+                  ? 'hover:bg-gray-100 text-gray-600 cursor-pointer' 
+                  : 'text-gray-300 cursor-not-allowed'
+              }`}
+              title={canGoToPreviousMonth ? "Mes anterior" : "No hay datos en mes anterior"}
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+            
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900">{monthData?.mes}</h2>
+              <p className="text-sm text-gray-500">Detalle día por día</p>
+            </div>
+            
+            {/* Botón mes siguiente */}
+            <button
+              onClick={handleNextMonth}
+              disabled={!canGoToNextMonth}
+              className={`p-2 rounded-full transition-colors ${
+                canGoToNextMonth 
+                  ? 'hover:bg-gray-100 text-gray-600 cursor-pointer' 
+                  : 'text-gray-300 cursor-not-allowed'
+              }`}
+              title={canGoToNextMonth ? "Mes siguiente" : "No hay datos en mes siguiente"}
+            >
+              <ChevronRight className="w-5 h-5" />
+            </button>
           </div>
           <button
             onClick={onClose}
@@ -167,31 +262,36 @@ export default function MonthDetailModal({ isOpen, onClose, monthData, orders = 
                   stroke="#6b7280"
                   style={{ fontSize: '12px' }}
                   tickFormatter={(value) => `$${(value / 1000).toFixed(0)}K`}
+                  domain={[0, (dataMax) => Math.ceil(maxTotal * 1.1 / 100000) * 100000]}
+                  tickCount={6}
                 />
                 <YAxis 
                   yAxisId="right"
                   orientation="right"
                   stroke="#9333ea"
                   style={{ fontSize: '12px' }}
+                  domain={[0, Math.max(maxPedidos + 2, 5)]}
+                  allowDecimals={false}
+                  tickCount={6}
                 />
                 <Tooltip content={<CustomTooltip />} />
                 <Legend wrapperStyle={{ paddingTop: '10px' }} />
                 <Bar 
-                  yAxisId="right"
-                  dataKey="pedidos" 
-                  fill="#a855f7"
-                  name="Pedidos"
+                  yAxisId="left"
+                  dataKey="total" 
+                  fill="#3b82f6"
+                  name="Facturación"
                   radius={[4, 4, 0, 0]}
                   opacity={0.7}
                 />
                 <Line 
-                  yAxisId="left"
+                  yAxisId="right"
                   type="monotone" 
-                  dataKey="total" 
-                  stroke="#3b82f6" 
+                  dataKey="pedidos" 
+                  stroke="#a855f7" 
                   strokeWidth={3}
-                  name="Facturación"
-                  dot={{ fill: '#3b82f6', r: 4 }}
+                  name="Pedidos"
+                  dot={{ fill: '#a855f7', r: 4 }}
                   activeDot={{ r: 6 }}
                 />
               </ComposedChart>
