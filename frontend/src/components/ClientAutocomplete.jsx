@@ -83,23 +83,27 @@ export default function ClientAutocomplete({ onSelect, value, placeholder = "Bus
     await loadingPromise;
   }
 
-  // Filtrar clientes basado en el input (búsqueda flexible)
+  // Función para normalizar texto (eliminar tildes)
+  const normalizeText = (text) => {
+    if (!text) return '';
+    return text
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '');
+  };
+
+  // Filtrar clientes basado en el input (búsqueda flexible sin tildes)
   const sugerencias = (clientes || []).filter(c => {
     if (!inputValue.trim()) return true;
     
-    const query = inputValue.toLowerCase();
-    const nombre = (c.nombre || "").toLowerCase();
-    const email = (c.email || "").toLowerCase();
-    const rut = (c.rut || "").toLowerCase();
-    const telefono = (c.telefono || "").toLowerCase();
-    const contacto = (c.contacto || "").toLowerCase();
+    const normalizedQuery = normalizeText(inputValue);
     
     return (
-      nombre.includes(query) ||
-      email.includes(query) ||
-      rut.includes(query) ||
-      telefono.includes(query) ||
-      contacto.includes(query)
+      normalizeText(c.nombre).includes(normalizedQuery) ||
+      normalizeText(c.email).includes(normalizedQuery) ||
+      normalizeText(c.rut).includes(normalizedQuery) ||
+      normalizeText(c.telefono).includes(normalizedQuery) ||
+      normalizeText(c.contacto).includes(normalizedQuery)
     );
   }).slice(0, 8); // Limitar a 8 sugerencias
 
@@ -116,7 +120,7 @@ export default function ClientAutocomplete({ onSelect, value, placeholder = "Bus
     // para ayudar al usuario a encontrar el cliente actualizado
     if (inputValue.trim()) {
       const exactMatch = clientes.find(c => 
-        c.nombre.toLowerCase() === inputValue.toLowerCase()
+        normalizeText(c.nombre) === normalizeText(inputValue)
       );
       if (!exactMatch) {
         // Si no hay coincidencia exacta, limpiar el input para facilitar la búsqueda
@@ -198,15 +202,15 @@ export default function ClientAutocomplete({ onSelect, value, placeholder = "Bus
 
   // Verificar si el cliente actual existe en la base de datos
   const clienteExiste = inputValue.trim() && clientes.some(c => 
-    c.nombre.toLowerCase() === inputValue.trim().toLowerCase()
+    normalizeText(c.nombre) === normalizeText(inputValue.trim())
   );
   
   // Buscar coincidencias aproximadas (para sugerir actualizaciones)
   const clientesSimilares = inputValue.trim() ? clientes.filter(c => {
-    const nombre = c.nombre.toLowerCase();
-    const input = inputValue.trim().toLowerCase();
+    const normalizedNombre = normalizeText(c.nombre);
+    const normalizedInput = normalizeText(inputValue.trim());
     // Buscar coincidencias parciales (el nombre del cliente contiene parte del input o viceversa)
-    return nombre.includes(input) || input.includes(nombre);
+    return normalizedNombre.includes(normalizedInput) || normalizedInput.includes(normalizedNombre);
   }).slice(0, 3) : [];
 
   return (

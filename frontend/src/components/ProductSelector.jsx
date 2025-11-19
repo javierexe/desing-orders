@@ -28,11 +28,21 @@ export default function ProductSelector({ onSelect, selectedProductId }) {
     }
   }
 
+  // Función para normalizar texto (eliminar tildes)
+  const normalizeText = (text) => {
+    if (!text) return '';
+    return text
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '');
+  };
+
   // Filtrar productos
   const productosFiltrados = productos.filter(p => {
+    const normalizedSearch = normalizeText(search);
     const matchSearch = !search || 
-      p.nombre.toLowerCase().includes(search.toLowerCase()) ||
-      (p.descripcion && p.descripcion.toLowerCase().includes(search.toLowerCase()));
+      normalizeText(p.nombre).includes(normalizedSearch) ||
+      normalizeText(p.descripcion).includes(normalizedSearch);
     
     const matchCategoria = !selectedCategoria || p.categoria_id === selectedCategoria;
     

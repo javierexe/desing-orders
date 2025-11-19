@@ -51,6 +51,15 @@ export default function OrdersTable() {
     return statusConfig || STATUS_OPTIONS[0];
   };
 
+  // Función para normalizar texto (eliminar tildes)
+  const normalizeText = (text) => {
+    if (!text) return '';
+    return text
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '');
+  };
+
   // Función para exportar a CSV
   const exportToCSV = () => {
     if (filteredOrders.length === 0) {
@@ -162,13 +171,13 @@ export default function OrdersTable() {
   const filteredOrders = useMemo(() => {
     let filtered = [...orders];
 
-    // Filtro por búsqueda
+    // Filtro por búsqueda (sin considerar tildes)
     if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
+      const normalizedQuery = normalizeText(searchQuery);
       filtered = filtered.filter(order =>
-        order.code?.toLowerCase().includes(query) ||
-        order.client_name?.toLowerCase().includes(query) ||
-        order.title?.toLowerCase().includes(query)
+        normalizeText(order.code).includes(normalizedQuery) ||
+        normalizeText(order.client_name).includes(normalizedQuery) ||
+        normalizeText(order.title).includes(normalizedQuery)
       );
     }
 
