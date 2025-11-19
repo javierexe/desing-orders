@@ -151,6 +151,23 @@ def create_order(payload: schemas.OrderCreate, db: Session = Depends(get_db)):
         )
         db.add(order_item)
     db.commit()
+    # Después de crear los ítems, comprobar si necesitamos auto-cambiar el status
+    # Si la orden está en 'pre-pedido' y ya tiene algún abono, pasar a 'recibido'
+    db.refresh(order)
+    # Recargar con items para calcular totales
+    from sqlalchemy.orm import joinedload
+    order = db.query(models.Order).options(
+        joinedload(models.Order.items),
+        joinedload(models.Order.receipts)
+    ).filter(models.Order.id == order.id).first()
+    totals_after_create = calculate_order_totals(order)
+    auto_status_changed = False
+    if order.status == 'pre-pedido' and totals_after_create.get('total_paid', 0) > 0:
+        logger.info(f"[POST /orders] Auto-cambiando status de 'pre-pedido' a 'recibido' al crear orden (total_paid={totals_after_create.get('total_paid')})")
+        order.status = 'recibido'
+        auto_status_changed = True
+        db.commit()
+        db.refresh(order)
     
     # Recargar la orden completa con sus items y receipts
     from sqlalchemy.orm import joinedload
@@ -185,6 +202,7 @@ def create_order(payload: schemas.OrderCreate, db: Session = Depends(get_db)):
             paid_amount=item.paid_amount
         ) for item in order.items],
         receipts=receipts,
+        auto_status_changed=auto_status_changed,
         **totals
     )
 

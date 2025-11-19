@@ -869,7 +869,12 @@ export default function NewOrderModal({
           }
         }
         
-        onNotify?.(`Pedido editado correctamente${order?.code ? `: ${order.code}` : ""}`, "success");
+        // Notificar si hubo auto-cambio de estado
+        if (saved.auto_status_changed) {
+          onNotify?.(`Pedido editado correctamente: ${order?.code || ''} (movido automáticamente a "Recibido" por tener abono)`, "success");
+        } else {
+          onNotify?.(`Pedido editado correctamente${order?.code ? `: ${order.code}` : ""}`, "success");
+        }
         onUpdated?.(saved);
       } else {
         saved = await api.createOrder(payload); // FastAPI devuelve objeto plano: { code, ... }
@@ -928,7 +933,13 @@ export default function NewOrderModal({
           console.log(`   Comprobantes guardados: ${persisted.filter(p => p.id).length}/${toPersist.length}`);
           console.log(`${'='.repeat(80)}\n`);
         }
-        onNotify?.(`Pedido creado: ${saved.code}`, "success");
+        
+        // Notificar si hubo auto-cambio de estado
+        if (saved.auto_status_changed) {
+          onNotify?.(`Pedido creado: ${saved.code} (movido automáticamente a "Recibido" por tener abono)`, "success");
+        } else {
+          onNotify?.(`Pedido creado: ${saved.code}`, "success");
+        }
         onCreated?.(saved);
       }
       onClose?.();
