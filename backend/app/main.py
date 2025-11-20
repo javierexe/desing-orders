@@ -102,6 +102,7 @@ def list_orders(db: Session = Depends(get_db)):
             delivery_method=order.delivery_method,
             due_date=order.due_date,
             delivered_date=order.delivered_date,
+            ready_date=order.ready_date,
             abono_image_url=order.abono_image_url,
             items=[schemas.OrderItemOut(
                 id=item.id,
