@@ -1007,6 +1007,7 @@ export default function NewOrderModal({
               value={form.client_name}
               onSelect={(cliente) => setForm({ ...form, client_name: cliente.nombre })}
               placeholder="Buscar o crear cliente..."
+              isEditing={editMode}
             />
           </label>
 
