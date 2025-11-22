@@ -125,6 +125,7 @@ export default function NewOrderModal({
   const [manualEntryItemId, setManualEntryItemId] = useState(null); // Item que necesita entrada manual con efecto visual
   
   const dropzoneRef = useRef(null);
+  const uploadedFilesRef = useRef([]); // Ref para almacenar archivos subidos inmediatamente
 
   // Guardamos el estado inicial para dirty-check
   const initialFormRef = useRef(form);
@@ -133,7 +134,13 @@ export default function NewOrderModal({
   const normDate = (v) => (v ? String(v).slice(0, 10) : "");
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      // Limpiar ref al cerrar
+      uploadedFilesRef.current = [];
+      return;
+    }
+    // Limpiar ref al abrir
+    uploadedFilesRef.current = [];
     if (editMode && order) {
       const next = {
         client_name: order.client_name ?? "",
@@ -187,6 +194,7 @@ export default function NewOrderModal({
       initialFormRef.current = blank;
       // Iniciar con un ítem vacío por defecto
       setItems([{
+        id: Date.now() + Math.random(), // ID único temporal
         description: "",
         quantity: 1,
         due_date: "",
@@ -531,13 +539,16 @@ export default function NewOrderModal({
       return;
     }
 
-    // Aplicar el abono al item seleccionado (solo si hay monto detectado)
-    if (detectedAmount) {
+    // Aplicar el abono al item seleccionado (incluso si es $0)
+    if (detectedAmount !== undefined && detectedAmount !== null) {
+      console.log('💰 Buscando item con ID:', itemId, '| Tipo:', typeof itemId);
+      console.log('📋 Items disponibles:', items.map(i => `ID:${i.id} "${i.description}"`));
+      
       setItems(prev => prev.map(item => {
         if (String(item.id) === String(itemId)) {
           const currentPaid = item.paid_amount || 0;
           const newPaidAmount = currentPaid + detectedAmount;
-          console.log(`📝 NewOrderModal: Updating item "${item.description}": paid_amount ${currentPaid} + ${detectedAmount} = ${newPaidAmount}`);
+          console.log(`✅ Abono aplicado a "${item.description}": $${currentPaid} + $${detectedAmount} = $${newPaidAmount}`);
           
           return {
             ...item,
@@ -547,16 +558,18 @@ export default function NewOrderModal({
         return item;
       }));
       
-      showToast(`✅ Abono de $${detectedAmount.toLocaleString('es-CL')} aplicado`, 'success');
+      const message = detectedAmount > 0 
+        ? `✅ Abono de $${detectedAmount.toLocaleString('es-CL')} aplicado`
+        : '✅ Comprobante añadido (sin monto detectado)';
+      showToast(message, 'success');
     }
     
-    // Subir el archivo actual después de aplicar el monto
+    // Subir el archivo (processFiles ya actualiza estado y ref)
     if (currentFileForDetection) {
-      console.log('📤 Subiendo comprobante:', currentFileForDetection.name);
       await processFiles([currentFileForDetection]);
     }
     
-    // Limpiar selección y continuar con siguiente archivo
+    // Limpiar selección y continuar
     setSelectedItemId(null);
     finishFileProcessing();
   };
@@ -656,21 +669,23 @@ export default function NewOrderModal({
 
       const results = await Promise.all(uploads);
       
-      // En modo edición, NO persistir inmediatamente - mantener solo en estado temporal
-      // Los comprobantes se guardarán cuando se haga "Guardar cambios"
-      console.log('💾 Manteniendo comprobantes en estado temporal hasta guardar cambios');
+      // Guardar en ref INMEDIATAMENTE para uso en handleSubmit
+      uploadedFilesRef.current = dedupeReceipts([...uploadedFilesRef.current, ...results]);
+      
+      // También actualizar el estado (puede tardar)
       setForm((f) => {
         const newImages = dedupeReceipts([ ...(f.abono_images || []), ...results ]);
-        console.log('🖼️ Updating abono_images (temporal):', newImages);
         return { ...f, abono_images: newImages };
       });
       
       showToast(`✅ ${results.length} archivo(s) subido(s) a Supabase`, 'success');
+      return results;
     } catch (err) {
       console.error('❌ Upload error:', err);
       const errorMsg = err.message || 'Error al subir archivos a Supabase Storage';
       showToast(`❌ ${errorMsg}`, 'error');
       onNotify && onNotify(errorMsg, "error");
+      return []; // Retornar array vacío en caso de error
     } finally {
       setUploading(false);
     }
@@ -789,25 +804,17 @@ export default function NewOrderModal({
         saved = await api.createOrder(payload); // FastAPI devuelve objeto plano: { code, ... }
         console.log('💾 Orden creada:', saved.code);
         
+        // Combinar form.abono_images con uploadedFilesRef (por si el estado no se actualizó)
+        const allImages = dedupeReceipts([...(form.abono_images || []), ...uploadedFilesRef.current]);
+        
         // Si hay comprobantes locales (sin id), persistirlos para asociarlos a la nueva orden
-        if (form.abono_images && form.abono_images.length) {
-          const toPersist = form.abono_images.filter(a => !a.id);
-          console.log(`\n${'='.repeat(80)}`);
-          console.log(`💾 [handleSubmit] PERSISTIENDO COMPROBANTES`);
-          console.log(`   Orden: ${saved.code}`);
-          console.log(`   Total comprobantes: ${form.abono_images.length}`);
-          console.log(`   Comprobantes a persistir (sin id): ${toPersist.length}`);
-          console.log(`   Comprobantes:`, toPersist);
-          console.log(`${'='.repeat(80)}\n`);
+        if (allImages && allImages.length) {
+          const toPersist = allImages.filter(a => !a.id);
+          console.log(`💾 Persistiendo ${toPersist.length} comprobante(s) en orden ${saved.code}`);
           
           const persisted = [];
           for (const item of toPersist) {
             try {
-              console.log(`📤 [handleSubmit] Guardando comprobante en BD:`);
-              console.log(`   Filename: ${item.filename}`);
-              console.log(`   URL: ${item.url}`);
-              console.log(`   Storage key: ${item.storage_key}`);
-              
               const res = await fetch(`/api/orders/${saved.code}/receipts`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -818,29 +825,22 @@ export default function NewOrderModal({
                 })
               });
               
-              console.log(`📡 [handleSubmit] Response status: ${res.status} ${res.statusText}`);
-              
               if (res.ok) {
                 const data = await res.json();
-                console.log('✅ [handleSubmit] Comprobante guardado en BD:', data);
                 persisted.push({ id: data.id, url: data.url, filename: data.filename, uploaded_at: data.uploaded_at });
               } else {
                 const errorText = await res.text();
-                console.error('❌ [handleSubmit] Error guardando comprobante en BD:', errorText);
+                console.error('❌ Error guardando comprobante:', errorText);
                 persisted.push(item);
               }
             } catch (err) {
-              console.error('❌ [handleSubmit] Excepción persistiendo comprobante:', err);
+              console.error('❌ Error persistiendo comprobante:', err);
               persisted.push(item);
             }
           }
           // Merge persisted receipts into the saved response so caller sees them
           saved.receipts = persisted;
-          
-          console.log(`\n${'='.repeat(80)}`);
-          console.log(`✅ [handleSubmit] PERSISTENCIA COMPLETADA`);
-          console.log(`   Comprobantes guardados: ${persisted.filter(p => p.id).length}/${toPersist.length}`);
-          console.log(`${'='.repeat(80)}\n`);
+          console.log(`✅ ${persisted.filter(p => p.id).length}/${toPersist.length} comprobante(s) guardado(s)`);
         }
         
         // Notificar si hubo auto-cambio de estado
@@ -1016,6 +1016,9 @@ export default function NewOrderModal({
                 showToast('✅ Ítem clonado exitosamente', 'success');
               }}
               handleChange={(idx, field, value) => {
+                console.log(`🔧 handleChange: idx=${idx}, field=${field}, value=${value}`);
+                console.log(`   Item ANTES:`, items[idx]);
+                
                 // Si el usuario edita el campo abono, limpiar el estado de entrada manual
                 if (field === 'paid_amount' && manualEntryItemId) {
                   const editedItem = items[idx];
@@ -1023,7 +1026,14 @@ export default function NewOrderModal({
                     setManualEntryItemId(null);
                   }
                 }
-                setItems(items => items.map((item, i) => i === idx ? { ...item, [field]: value } : item));
+                setItems(items => items.map((item, i) => {
+                  if (i === idx) {
+                    const updated = { ...item, [field]: value };
+                    console.log(`   Item DESPUÉS:`, updated);
+                    return updated;
+                  }
+                  return item;
+                }));
               }}
             />
           </div>

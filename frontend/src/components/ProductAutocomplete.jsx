@@ -69,36 +69,16 @@ export default function ProductAutocomplete({ onSelect, value, placeholder = "Bu
     setLoading(true);
     loadingPromise = (async () => {
       try {
-        console.log('🔄 Cargando productos desde API...');
-        console.log('🌐 URL completa:', window.location.origin + '/api/productos');
-        
-        // api.get() retorna directamente los datos, no un objeto response
         const data = await api.get("/productos");
-        
-        console.log('📡 Data recibida:', {
-          dataType: typeof data,
-          isArray: Array.isArray(data),
-          length: Array.isArray(data) ? data.length : 'N/A',
-          sample: Array.isArray(data) && data.length > 0 ? data[0] : null
-        });
         
         // Asegurar que siempre sea un array
         const productos = Array.isArray(data) ? data : [];
         productosCache = productos; // Guardar en cache
         setProductos(productos);
         
-        // Log detallado para debug
-        console.log(`✅ Productos cargados: ${productos.length} total`);
-        const agendas = productos.filter(p => p.nombre && p.nombre.toLowerCase().includes('agenda'));
-        console.log(`📘 Agendas encontradas: ${agendas.length}`, agendas.map(a => a.nombre));
-        
         return productos;
       } catch (error) {
-        console.error("❌ Error cargando productos:", error);
-        console.error("❌ Detalles del error:", {
-          message: error.message,
-          stack: error.stack
-        });
+        console.error("Error cargando productos:", error.message);
         const emptyData = [];
         productosCache = emptyData;
         setProductos(emptyData);
@@ -135,44 +115,20 @@ export default function ProductAutocomplete({ onSelect, value, placeholder = "Bu
       .normalize("NFD")
       .replace(/[\u0300-\u036f]/g, "");
     
-    // Normalizar categoría
-    const categoriaNormalizada = String(p.categoria?.nombre || "")
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "");
-    
-    // DEBUG: Log para ver qué se está buscando (primeras búsquedas)
-    if (searchTerm.length > 2 && Math.random() < 0.1) {
-      console.log('🔍 Buscando:', searchTerm, '| Producto:', nombreNormalizado.substring(0, 30));
-    }
-    
-    // Buscar coincidencias en cualquier campo
+    // Buscar coincidencias solo en nombre y descripción
     const match = (
       nombreNormalizado.includes(searchTerm) ||
-      descripcionNormalizada.includes(searchTerm) ||
-      categoriaNormalizada.includes(searchTerm)
+      descripcionNormalizada.includes(searchTerm)
     );
     
     return match;
   }).slice(0, 8); // Limitar a 8 sugerencias
-
-  // DEBUG: Log de sugerencias calculadas
-  if (inputValue.trim() && sugerencias.length > 0) {
-    console.log(`💡 ${sugerencias.length} sugerencias:`, sugerencias.map(s => s.nombre));
-  } else if (inputValue.trim() && sugerencias.length === 0) {
-    console.log(`❌ Sin sugerencias para "${inputValue}" | Total productos: ${productos.length}`);
-  }
 
   function handleInputChange(e) {
     const newValue = e.target.value;
     setInputValue(newValue);
     setShowSuggestions(true);
     setSelectedIndex(-1);
-    
-    // DEBUG: Log de búsqueda
-    if (newValue.trim().length > 0) {
-      console.log(`🔍 Buscando: "${newValue}" en ${productos.length} productos`);
-    }
     
     // Si el usuario borra todo, notificar al padre
     if (!newValue.trim()) {
@@ -254,7 +210,6 @@ export default function ProductAutocomplete({ onSelect, value, placeholder = "Bu
           type="text"
           value={inputValue}
           onChange={handleInputChange}
-          onFocus={handleInputFocus}
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
           className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent"

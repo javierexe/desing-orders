@@ -223,7 +223,6 @@ export default function ClientAutocomplete({ onSelect, value, placeholder = "Bus
           type="text"
           value={inputValue}
           onChange={handleInputChange}
-          onFocus={handleInputFocus}
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
           className={`w-full pl-10 pr-3 py-2 border rounded-xl focus:ring-2 focus:ring-sky-400 focus:border-sky-400 outline-none ${

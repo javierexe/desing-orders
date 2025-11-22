@@ -94,7 +94,8 @@ const AmountDetection = ({
       return;
     }
     
-    if (detectionResult?.amount) {
+    // Permitir aceptar incluso si el monto es 0 (detección fallida)
+    if (detectionResult?.amount !== undefined) {
       onAmountDetected(detectionResult.amount, selectedItemId);
     }
   };
@@ -226,16 +227,25 @@ const AmountDetection = ({
               </label>
               <select
                 value={selectedItemId || ''}
-                onChange={(e) => onItemSelected(e.target.value || null)}
+                onChange={(e) => {
+                  const newValue = e.target.value || null;
+                  console.log('✓ Item seleccionado:', newValue);
+                  onItemSelected(newValue);
+                }}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
               >
                 <option value="">Selecciona un item...</option>
-                {items.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.description || item.name || `Item ${items.indexOf(item) + 1}`} - ${(item.price || 0).toLocaleString('es-CL')}
-                    {item.paid_amount > 0 && ` (Abonado: $${item.paid_amount.toLocaleString('es-CL')})`}
-                  </option>
-                ))}
+                {items.map((item, index) => {
+                  // Asegurar que el item tenga ID (generar uno temporal si falta)
+                  const itemId = item.id || `temp-${index}-${Date.now()}`;
+                  const displayText = item.description || item.name || `Item ${index + 1}`;
+                  return (
+                    <option key={itemId} value={itemId}>
+                      {displayText} - ${(item.price || 0).toLocaleString('es-CL')}
+                      {item.paid_amount > 0 && ` (Abonado: $${item.paid_amount.toLocaleString('es-CL')})`}
+                    </option>
+                  );
+                })}
               </select>
             </div>
 

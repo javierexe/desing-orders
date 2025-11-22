@@ -26,15 +26,22 @@ ip:
 	@echo "Tu IP LAN parece ser: $(IP)"
 
 backend:
+	@echo ">> Liberando puerto $(BACKEND_PORT)..."
+	@lsof -ti:$(BACKEND_PORT) | xargs kill -9 2>/dev/null || true
 	@echo ">> Iniciando backend en http://$(IP):$(BACKEND_PORT) ..."
 	cd backend && source ../.venv/bin/activate && uvicorn app.main:app --reload --host $(BACKEND_HOST) --port $(BACKEND_PORT)
 
 frontend:
+	@echo ">> Liberando puerto $(FRONT_PORT)..."
+	@lsof -ti:$(FRONT_PORT) | xargs kill -9 2>/dev/null || true
 	@echo ">> Iniciando frontend en http://$(IP):$(FRONT_PORT) ..."
 	# --host permite acceso desde la LAN; --port fija el puerto
 	cd frontend && npm run dev -- --host $(FRONT_HOST) --port $(FRONT_PORT)
 
 dev:
+	@echo ">> Liberando puertos $(BACKEND_PORT) y $(FRONT_PORT)..."
+	@lsof -ti:$(BACKEND_PORT) -ti:$(FRONT_PORT) | xargs kill -9 2>/dev/null || true
+	@sleep 1
 	@echo ">> Iniciando backend + frontend (Ctrl+C para salir)"
 	@echo "   Backend:  http://$(IP):$(BACKEND_PORT)"
 	@echo "   Frontend: http://$(IP):$(FRONT_PORT)"
