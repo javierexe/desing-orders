@@ -520,23 +520,23 @@ export default function NewOrderModal({
       showToast('✅ Pedido cambiado a "Recibido" automáticamente', 'info');
     }
 
-    // Si es modo manual, solo marcar el item para entrada manual
+    // Si es modo manual, subir el archivo sin aplicar monto
     if (mode === 'manual') {
       setManualEntryItemId(itemId);
-      // Continuar con el procesamiento del archivo sin aplicar monto
-      setTimeout(async () => {
-        console.log('⏰ Modo manual activado, procesando archivo...');
-        await processCurrentFileAndContinue();
-      }, 100);
+      // Subir el archivo actual
+      if (currentFileForDetection) {
+        await processFiles([currentFileForDetection]);
+      }
+      finishFileProcessing();
       return;
     }
 
     // Aplicar el abono al item seleccionado (solo si hay monto detectado)
     if (detectedAmount) {
       setItems(prev => prev.map(item => {
-        if (String(item.id) === String(itemId)) { // Comparar como strings para evitar problemas con tipos
+        if (String(item.id) === String(itemId)) {
           const currentPaid = item.paid_amount || 0;
-          const newPaidAmount = currentPaid + detectedAmount; // Directamente en pesos chilenos
+          const newPaidAmount = currentPaid + detectedAmount;
           console.log(`📝 NewOrderModal: Updating item "${item.description}": paid_amount ${currentPaid} + ${detectedAmount} = ${newPaidAmount}`);
           
           return {
@@ -546,136 +546,45 @@ export default function NewOrderModal({
         }
         return item;
       }));
+      
+      showToast(`✅ Abono de $${detectedAmount.toLocaleString('es-CL')} aplicado`, 'success');
     }
     
-    // **🔧 FIX: Esperar a que se actualice el estado antes de continuar**
-    // Usar setTimeout para asegurar que el setItems se aplique
-    setTimeout(async () => {
-      console.log('⏰ Estado actualizado, continuando con archivo...');
-      await continueAfterAmountDetected(detectedAmount);
-    }, 100);
-  };
-  
-  // Función separada para continuar después de aplicar el abono
-  const continueAfterAmountDetected = async (appliedAmount) => {
-    // **🔧 FIX: Subir la imagen del comprobante también**
+    // Subir el archivo actual después de aplicar el monto
     if (currentFileForDetection) {
-      console.log('📤 Subiendo comprobante después de aplicar abono:', currentFileForDetection.name);
-      try {
-        // Subir archivo a Supabase Storage con metadata del pedido
-        const formData = new FormData();
-        formData.append("file", currentFileForDetection);
-        // Agregar metadata si está disponible
-        if (order?.code) {
-          formData.append("order_code", order.code);
-        }
-        if (appliedAmount) {
-          formData.append("amount", appliedAmount.toString());
-        }
-        
-        const res = await fetch("/api/upload-abono-image", {
-          method: "POST",
-          body: formData,
-        });
-        
-        if (!res.ok) {
-          const txt = await res.text();
-          let errorDetail = "Error al subir imagen a Supabase Storage";
-          try {
-            const errorJson = JSON.parse(txt);
-            errorDetail = errorJson.detail || errorDetail;
-          } catch {
-            errorDetail = txt || errorDetail;
-          }
-          throw new Error(errorDetail);
-        }
-        
-        const uploadResult = await res.json();
-        console.log('📡 Upload response:', uploadResult);
-        
-        // El backend siempre devuelve Supabase ahora (no hay fallback local)
-        const imageData = { 
-          url: uploadResult.url, 
-          storage_key: uploadResult.storage_key, 
-          filename: getFileNameFromUrl(uploadResult.url) 
-        };
-        
-        // **🔧 CRÍTICO: Agregar directamente al estado del formulario**
-        setForm(prevForm => {
-          const newImages = dedupeReceipts([...(prevForm.abono_images || []), imageData]);
-          console.log('🖼️ Agregando comprobante al estado:', newImages);
-          return { ...prevForm, abono_images: newImages };
-        });
-        
-        console.log('✅ Comprobante subido y agregado al estado correctamente');
-      } catch (error) {
-        console.error('❌ Error subiendo comprobante después del OCR:', error);
-        const errorMsg = error.message || 'Error al guardar el comprobante en Supabase Storage';
-        showToast(`❌ ${errorMsg}`, 'error');
-      }
+      console.log('📤 Subiendo comprobante:', currentFileForDetection.name);
+      await processFiles([currentFileForDetection]);
     }
     
-    // Limpiar selección de item y continuar con siguiente archivo
+    // Limpiar selección y continuar con siguiente archivo
     setSelectedItemId(null);
-    await finishFileProcessing();
-    
-    showToast(`✅ Abono de $${appliedAmount.toLocaleString('es-CL')} aplicado`, 'success');
+    finishFileProcessing();
   };
 
-  // Función para cancelar detección y procesar archivos normalmente
-  const handleDetectionCanceled = async () => {
-    try {
-      // No reprocessar archivo actual, solo continuar con pendientes
-      await finishFileProcessing();
-    } catch (error) {
-      console.error('❌ Error al continuar con archivos pendientes:', error);
-      // En caso de error, solo limpiar el estado
-      setShowAmountDetection(false);
-      setCurrentFileForDetection(null);
-      setPendingFiles([]);
-    }
+  // Función para cancelar detección y continuar con siguiente archivo
+  const handleDetectionCanceled = () => {
+    console.log('❌ Detección cancelada');
+    setSelectedItemId(null);
+    finishFileProcessing();
   };
 
-  // Función para procesar archivo actual y continuar con el siguiente
-  const processCurrentFileAndContinue = async () => {
-    if (currentFileForDetection) {
-      try {
-        // Procesar archivo actual
-        await processFiles([currentFileForDetection]);
-        
-        // Si llegamos aquí, el archivo se procesó exitosamente
-        finishFileProcessing();
-        
-      } catch (error) {
-        console.error('❌ Error al procesar archivo:', error);
-        // En caso de error, mostrar mensaje y limpiar estado
-        showToast('❌ Error al subir archivo', 'error');
-        finishFileProcessing();
-      }
-    } else {
-      finishFileProcessing();
-    }
-  };
-
-  // Función para omitir archivo completamente (sin subir)
+  // Función para omitir archivo completamente (sin guardar abono)
   const handleSkipFile = () => {
     console.log('⏭️ NewOrderModal: Skipping file:', currentFileForDetection?.name);
+    setSelectedItemId(null);
     finishFileProcessing();
     showToast('📄 Archivo omitido', 'info');
   };
-  const finishFileProcessing = async () => {
+  
+  const finishFileProcessing = () => {
     // Remover archivo actual de pendientes
     const remainingFiles = pendingFiles.filter(f => f !== currentFileForDetection);
     setPendingFiles(remainingFiles);
     
     if (remainingFiles.length > 0) {
-      // Subir el siguiente archivo antes de mostrar detección
-      const nextFile = remainingFiles[0];
-      await processFiles([nextFile]);
-      
       // Continuar con el siguiente archivo
+      const nextFile = remainingFiles[0];
       setCurrentFileForDetection(nextFile);
-      setPendingFiles(remainingFiles.slice(1)); // Remover el que acabamos de subir
     } else {
       // No hay más archivos, cerrar detección
       setShowAmountDetection(false);
