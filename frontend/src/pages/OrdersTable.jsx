@@ -423,18 +423,20 @@ export default function OrdersTable() {
       {/* Filtros y búsqueda */}
       <div className="bg-white rounded-xl border border-slate-200 p-4">
         {/* Primera fila: Búsqueda */}
-        <div className="mb-4">
+<form role="search" autoComplete="off" onSubmit={(e) => e.preventDefault()} className="mb-4">
           <div className="relative max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
             <input
-              type="text"
+              type="search"
+              name="search"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Buscar por código, cliente o título..."
-              className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 [&::-webkit-search-cancel-button]:hidden"
+              autoComplete="off"
             />
           </div>
-        </div>
+        </form>
 
         {/* Segunda fila: Filtros */}
         <div className="flex flex-wrap gap-3 items-center justify-between">

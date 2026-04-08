@@ -177,22 +177,26 @@ function AppInner() {
               }
             >
               {/* Barra de búsqueda */}
-              <div className="mb-4 flex items-center gap-2">
+              <form role="search" autoComplete="off" onSubmit={(e) => e.preventDefault()} className="mb-4 flex items-center gap-2">
                 <input
+                  type="search"
+                  name="search"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="Buscar por código, cliente o título…"
-                  className="w-full max-w-md rounded-2xl border border-slate-300 bg-white px-4 py-2 outline-none focus:ring-2 focus:ring-sky-400"
+                  className="w-full max-w-md rounded-2xl border border-slate-300 bg-white px-4 py-2 outline-none focus:ring-2 focus:ring-sky-400 [&::-webkit-search-cancel-button]:hidden"
+                  autoComplete="off"
                 />
                 {query && (
                   <button
+                    type="button"
                     onClick={() => setQuery("")}
                     className="rounded-xl border border-slate-300 px-3 py-2 text-sm hover:bg-slate-50"
                   >
                     Limpiar
                   </button>
                 )}
-              </div>
+              </form>
               {/* Kanban */}
               <section className="mt-0">
                 <Kanban
